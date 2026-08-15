@@ -52,6 +52,9 @@ export function themeToCssVars(theme: Theme): CSSProperties {
     vars[`--fn-color-${kebab(token)}`] = theme.colors[token];
   }
 
+  // Aviso não entra na lista acima porque é opcional no tema.
+  vars["--fn-color-warning"] = theme.colors.warning ?? "#eab308";
+
   for (const token of spaceTokens) {
     vars[`--fn-space-${token}`] = `${theme.spacing[token]}px`;
   }

@@ -7,8 +7,23 @@ import {
   spacerBlock,
   textBlock,
 } from "./definitions/content";
+import { cartesianBlock, chartBlock, compareBlock, levelBlock } from "./definitions/data";
 import { choiceBlock, inputBlock } from "./definitions/input";
-import { imageBlock, videoBlock } from "./definitions/media";
+import { audioBlock, carouselBlock, imageBlock, videoBlock } from "./definitions/media";
+import {
+  confettiBlock,
+  countdownBlock,
+  embedBlock,
+  pricingBlock,
+} from "./definitions/offer";
+import {
+  alertBlock,
+  cardsBlock,
+  faqBlock,
+  marqueeBlock,
+  termsBlock,
+  testimonialsBlock,
+} from "./definitions/proof";
 
 export { createContainerBlock } from "./definitions/container";
 export * from "./types";
@@ -19,21 +34,47 @@ export * from "./types";
  * Esta lista é o registro central: o editor monta a paleta a partir dela, o
  * schema monta a união discriminada, e o copiloto de IA aprende o vocabulário
  * de blocos aqui. Adicionar um bloco = criar a definição e incluir nesta lista.
+ *
+ * A ordem importa só para o desempate dentro de uma categoria da paleta; o
+ * agrupamento vem de `blockCategories`.
  */
 export const leafBlockDefinitions = [
+  // Conteúdo
   headingBlock,
   textBlock,
   listBlock,
-  imageBlock,
-  videoBlock,
+  alertBlock,
+  faqBlock,
+  termsBlock,
+  // Entrada
   choiceBlock,
   inputBlock,
+  // Mídia
+  imageBlock,
+  videoBlock,
+  audioBlock,
+  carouselBlock,
+  // Ação
   buttonBlock,
   loaderBlock,
   resultBlock,
+  pricingBlock,
+  countdownBlock,
+  confettiBlock,
+  // Prova social
+  cardsBlock,
+  testimonialsBlock,
+  marqueeBlock,
+  // Dados
+  chartBlock,
+  cartesianBlock,
+  levelBlock,
+  compareBlock,
+  // Layout
   progressBlock,
   dividerBlock,
   spacerBlock,
+  embedBlock,
 ] as const;
 
 export type LeafBlockDefinition = (typeof leafBlockDefinitions)[number];

@@ -1,10 +1,17 @@
 import type { z } from "zod";
 
+/**
+ * A ordem aqui é a ordem da paleta. Os básicos vêm primeiro; prova social e
+ * visualização de dados ficam agrupados mais abaixo, para o repertório avançado
+ * não competir com o que se usa em toda tela.
+ */
 export const blockCategories = {
   conteudo: "Conteúdo",
-  midia: "Mídia",
   entrada: "Entrada",
+  midia: "Mídia",
   acao: "Ação",
+  prova: "Prova social",
+  dados: "Dados",
   layout: "Layout",
 } as const;
 

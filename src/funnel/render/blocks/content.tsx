@@ -31,8 +31,12 @@ export function TextBlock({ props }: { props: PropsOf<"text"> }) {
 export function ListBlock({ props }: { props: PropsOf<"list"> }) {
   const { context } = useFunnelRuntime();
 
+  // `variant` nasceu depois de já haver funil salvo, então documentos antigos
+  // chegam sem o campo e caem no formato original.
+  const variant = props.variant ?? "simples";
+
   return (
-    <ul className="fn-list">
+    <ul className="fn-list" data-variant={variant}>
       {props.items.map((item, index) => (
         <li
           key={index}
@@ -44,8 +48,15 @@ export function ListBlock({ props }: { props: PropsOf<"list"> }) {
               : undefined
           }
         >
-          <Marker marker={props.marker} index={index} emoji={item.emoji} />
-          <div>
+          {variant === "notificacao" ? (
+            <span className="fn-list-avatar" aria-hidden>
+              {item.emoji ?? "🔔"}
+            </span>
+          ) : (
+            <Marker marker={props.marker} index={index} emoji={item.emoji} />
+          )}
+
+          <div className="fn-list-body">
             <RichText as="div" text={item.title} context={context} className="fn-list-title" />
             {item.description && (
               <RichText

@@ -2,7 +2,7 @@
 
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Copy, GripVertical, Trash2 } from "lucide-react";
+import { Copy, EyeOff, GripVertical, Trash2 } from "lucide-react";
 import { useMemo, type CSSProperties } from "react";
 
 import { BlockView } from "@/funnel/render/block-view";
@@ -182,6 +182,15 @@ function CanvasBlock({
         selectBlock(block.id);
       }}
     >
+      {/* Sem este selo, um bloco com condição parece ter sumido sem motivo —
+          ele só não aparece para quem não bate a condição. */}
+      {block.visibleIf && (
+        <span className="ed-block-flag" title="Só aparece quando a condição for verdadeira">
+          <EyeOff size={11} />
+          Condicional
+        </span>
+      )}
+
       <div className="ed-block-toolbar">
         <button
           type="button"

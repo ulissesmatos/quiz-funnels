@@ -24,16 +24,15 @@ export const PALETTE_PREFIX = "palette:";
  * dos funis é feita.
  */
 export function Palette({ onBlocoAdicionado }: { onBlocoAdicionado?: () => void }) {
+  // Percorre as categorias na ordem declarada em `blockCategories`, não na
+  // ordem em que os blocos aparecem no registro: é o que mantém os básicos no
+  // topo e o repertório avançado agrupado embaixo.
   const grupos = useMemo(() => {
-    const porCategoria = new Map<BlockCategory, typeof allBlockDefinitions>();
+    const chaves = Object.keys(blockCategories) as BlockCategory[];
 
-    for (const definition of allBlockDefinitions) {
-      const lista = porCategoria.get(definition.category) ?? [];
-      lista.push(definition);
-      porCategoria.set(definition.category, lista);
-    }
-
-    return [...porCategoria.entries()];
+    return chaves
+      .map((categoria) => [categoria, allBlockDefinitions.filter((d) => d.category === categoria)] as const)
+      .filter(([, definicoes]) => definicoes.length > 0);
   }, []);
 
   return (

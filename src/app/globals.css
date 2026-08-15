@@ -32,6 +32,46 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/**
+ * Barras de rolagem discretas no shell.
+ *
+ * O editor tem várias áreas roláveis lado a lado (telas, paleta, inspector,
+ * chat); com a barra padrão do sistema elas competem visualmente com o conteúdo.
+ * O funil público fica de fora de propósito: ele tem tema próprio, e ali a barra
+ * do sistema é o que o visitante espera.
+ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-app-border) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-app-border);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--color-app-border) 60%, var(--color-app-muted));
+}
+
+/* Sem as setinhas do topo e da base. */
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* Foco visível e consistente em todo o shell. */
 :focus-visible {
   outline: 2px solid var(--color-app-primary);

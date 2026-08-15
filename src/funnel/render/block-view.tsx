@@ -14,8 +14,18 @@ import {
   SpacerBlock,
   TextBlock,
 } from "./blocks/content";
+import { CartesianBlock, ChartBlock, CompareBlock, LevelBlock } from "./blocks/data";
 import { ChoiceBlock, InputBlock } from "./blocks/input";
-import { ImageBlock, VideoBlock } from "./blocks/media";
+import { AudioBlock, CarouselBlock, ImageBlock, VideoBlock } from "./blocks/media";
+import { ConfettiBlock, CountdownBlock, EmbedBlock, PricingBlock } from "./blocks/offer";
+import {
+  AlertBlock,
+  CardsBlock,
+  FaqBlock,
+  MarqueeBlock,
+  TermsBlock,
+  TestimonialsBlock,
+} from "./blocks/proof";
 import { useFunnelRuntime } from "./runtime-context";
 import { blockAnimationVars, blockStyleVars, splitResponsive } from "./style";
 
@@ -78,6 +88,43 @@ function BlockContent({ block, theme }: { block: Block; theme: Theme }) {
       return <DividerBlock props={block.props} />;
     case "spacer":
       return <SpacerBlock props={block.props} />;
+
+    case "alert":
+      return <AlertBlock props={block.props} />;
+    case "faq":
+      return <FaqBlock props={block.props} />;
+    case "terms":
+      return <TermsBlock props={block.props} />;
+    case "cards":
+      return <CardsBlock props={block.props} />;
+    case "testimonials":
+      return <TestimonialsBlock props={block.props} />;
+    case "marquee":
+      return <MarqueeBlock props={block.props} />;
+
+    case "audio":
+      return <AudioBlock props={block.props} />;
+    case "carousel":
+      return <CarouselBlock props={block.props} />;
+
+    case "pricing":
+      return <PricingBlock props={block.props} theme={theme} />;
+    case "countdown":
+      return <CountdownBlock props={block.props} blockId={block.id} />;
+    case "confetti":
+      return <ConfettiBlock props={block.props} />;
+    case "embed":
+      return <EmbedBlock props={block.props} />;
+
+    case "chart":
+      return <ChartBlock props={block.props} />;
+    case "cartesian":
+      return <CartesianBlock props={block.props} />;
+    case "level":
+      return <LevelBlock props={block.props} />;
+    case "compare":
+      return <CompareBlock props={block.props} />;
+
     case "container":
       return <ContainerBlock props={block.props} theme={theme} />;
     default:

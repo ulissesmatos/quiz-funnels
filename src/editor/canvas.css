@@ -85,6 +85,23 @@
   display: flex;
 }
 
+.ed-block-flag {
+  position: absolute;
+  top: -11px;
+  left: 0;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-app-bg);
+  background: #eab308;
+}
+
 .ed-block-label {
   font-size: 11px;
   color: var(--color-app-muted);

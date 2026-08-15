@@ -65,9 +65,17 @@ export const listBlock = defineBlock({
         )
         .min(1)
         .max(20),
+      // Opcional de propósito: o campo nasceu depois que já havia funil salvo
+      // no banco, e exigi-lo invalidaria documentos que estão no ar.
+      variant: z
+        .enum(["simples", "notificacao"])
+        .optional()
+        .describe(
+          "simples = lista de benefícios; notificacao = cada item vira um card com ícone colorido, no formato de um feed de avisos ('Novo pedido', 'Usuário se cadastrou'), bom para simular movimento e prova social",
+        ),
       marker: z
         .enum(["check", "number", "emoji", "dot", "none"])
-        .describe("Formato do marcador de cada item"),
+        .describe("Formato do marcador de cada item. Ignorado quando variant = 'notificacao'."),
       animated: z.boolean().describe("Revela os itens em cascata ao entrar na tela"),
       stagger: z.number().min(0).max(2000).describe("Intervalo em ms entre um item e o próximo quando animated = true"),
     })
@@ -121,7 +129,7 @@ export const spacerBlock = defineBlock({
 export const progressBlock = defineBlock({
   type: "progress",
   label: "Barra de progresso",
-  category: "conteudo",
+  category: "layout",
   icon: "LoaderPinwheel",
   description:
     "Barra que mostra o avanço no funil. No modo 'auto' ela se calcula sozinha pela posição do step atual — é o modo recomendado. Colocar no topo de cada pergunta aumenta bastante a taxa de conclusão.",

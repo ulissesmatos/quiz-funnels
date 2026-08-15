@@ -13,7 +13,8 @@ import { nanoid } from "nanoid";
 import postgres from "postgres";
 
 import { metabolismoTemplate } from "@/funnel/templates/metabolismo";
-import { parseFunnelDocument } from "@/funnel/schema";
+import { vitrineTemplate } from "@/funnel/templates/vitrine";
+import { parseFunnelDocument, type FunnelDocument } from "@/funnel/schema";
 
 import * as schema from "./schema";
 
@@ -30,14 +31,20 @@ async function main() {
   try {
     // Falhar aqui é melhor do que gravar um documento quebrado e só descobrir
     // quando a página pública der 404.
-    const parsed = parseFunnelDocument(metabolismoTemplate);
-    if (!parsed.success) {
-      console.error("O funil de exemplo não passou na validação do schema:");
-      for (const issue of parsed.error.issues) {
-        console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
+    const modelos = [metabolismoTemplate, vitrineTemplate];
+    const validados: FunnelDocument[] = [];
+
+    for (const modelo of modelos) {
+      const parsed = parseFunnelDocument(modelo);
+      if (!parsed.success) {
+        console.error(`O funil "${modelo.name}" não passou na validação do schema:`);
+        for (const issue of parsed.error.issues) {
+          console.error(`  - ${issue.path.join(".")}: ${issue.message}`);
+        }
+        process.exitCode = 1;
+        return;
       }
-      process.exitCode = 1;
-      return;
+      validados.push(parsed.data);
     }
 
     const now = new Date();
@@ -105,56 +112,58 @@ async function main() {
       console.log("· organização demo já existia");
     }
 
-    const document = parsed.data;
+    for (const document of validados) {
+      const [existingFunnel] = await db
+        .select()
+        .from(schema.funnels)
+        .where(eq(schema.funnels.slug, document.slug))
+        .limit(1);
 
-    const [existingFunnel] = await db
-      .select()
-      .from(schema.funnels)
-      .where(eq(schema.funnels.slug, document.slug))
-      .limit(1);
+      const funnelId =
+        existingFunnel?.id ??
+        (
+          await db
+            .insert(schema.funnels)
+            .values({
+              organizationId: org.id,
+              slug: document.slug,
+              name: document.name,
+              document,
+              createdBy: demoUser.id,
+            })
+            .returning({ id: schema.funnels.id })
+        )[0].id;
 
-    const funnelId =
-      existingFunnel?.id ??
-      (
+      if (existingFunnel) {
         await db
-          .insert(schema.funnels)
-          .values({
-            organizationId: org.id,
-            slug: document.slug,
-            name: document.name,
-            document,
-            createdBy: demoUser.id,
-          })
-          .returning({ id: schema.funnels.id })
-      )[0].id;
+          .update(schema.funnels)
+          .set({ document, name: document.name, updatedAt: now })
+          .where(eq(schema.funnels.id, funnelId));
+      }
 
-    if (existingFunnel) {
+      // Republica sempre, para o seed refletir edições feitas no template.
+      const versions = await db
+        .select({ version: schema.funnelVersions.version })
+        .from(schema.funnelVersions)
+        .where(eq(schema.funnelVersions.funnelId, funnelId));
+
+      const nextVersion = versions.reduce((max, v) => Math.max(max, v.version), 0) + 1;
+
+      const [version] = await db
+        .insert(schema.funnelVersions)
+        .values({ funnelId, version: nextVersion, document, publishedBy: demoUser.id })
+        .returning({ id: schema.funnelVersions.id });
+
       await db
         .update(schema.funnels)
-        .set({ document, name: document.name, updatedAt: now })
+        .set({ publishedVersionId: version.id, status: "published", updatedAt: now })
         .where(eq(schema.funnels.id, funnelId));
+
+      console.log(`✓ funil "${document.name}" publicado (v${nextVersion})`);
+      console.log(`    http://localhost:3000/f/${document.slug}`);
     }
 
-    // Republica sempre, para o seed refletir edições feitas no template.
-    const versions = await db
-      .select({ version: schema.funnelVersions.version })
-      .from(schema.funnelVersions)
-      .where(eq(schema.funnelVersions.funnelId, funnelId));
-
-    const nextVersion = versions.reduce((max, v) => Math.max(max, v.version), 0) + 1;
-
-    const [version] = await db
-      .insert(schema.funnelVersions)
-      .values({ funnelId, version: nextVersion, document, publishedBy: demoUser.id })
-      .returning({ id: schema.funnelVersions.id });
-
-    await db
-      .update(schema.funnels)
-      .set({ publishedVersionId: version.id, status: "published", updatedAt: now })
-      .where(eq(schema.funnels.id, funnelId));
-
-    console.log(`✓ funil "${document.name}" publicado (v${nextVersion})`);
-    console.log(`\n  Acesse: http://localhost:3000/f/${document.slug}\n`);
+    console.log("");
   } finally {
     await client.end();
   }

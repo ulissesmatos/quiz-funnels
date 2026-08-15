@@ -22,6 +22,13 @@ export const ThemeColors = z
     border: Hex.describe("Bordas e divisores"),
     success: Hex,
     danger: Hex,
+    /**
+     * Cor de aviso. Opcional porque nasceu depois de já haver funil salvo; sem
+     * ela o render usa um âmbar padrão. Existe separada de `accent` de
+     * propósito: um alerta de atenção pintado com a cor da marca pode sair
+     * verde, e aí ele deixa de comunicar o que deveria.
+     */
+    warning: Hex.optional(),
   })
   .strict();
 
