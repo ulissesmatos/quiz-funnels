@@ -112,6 +112,96 @@ describe("lint do funil", () => {
   });
 });
 
+describe("CTAs simultâneos", () => {
+  const segundoBotao = {
+    id: "blk_botao_oferta_2",
+    type: "button" as const,
+    props: {
+      label: "Falar no WhatsApp",
+      action: { kind: "whatsapp" as const, phone: "5511999999999", message: "" },
+    },
+  };
+
+  it("acusa dois CTAs finais visíveis ao mesmo tempo, sem condição", () => {
+    const doc: FunnelDocument = {
+      ...base,
+      steps: base.steps.map((step) =>
+        step.id === "step_oferta" ? { ...step, blocks: [...step.blocks, segundoBotao] } : step,
+      ),
+    } as FunnelDocument;
+
+    expect(temCodigo(lintFunnel(doc), "ctas_simultaneos")).toBe(true);
+  });
+
+  it("acusa CTAs condicionados por pontuação em categorias diferentes — o caso real que empilhou botões", () => {
+    // Duas categorias de score podem passar do limite juntas: gte numa e gte
+    // noutra não são excludentes, mesmo as duas tendo visibleIf.
+    const doc: FunnelDocument = {
+      ...base,
+      steps: base.steps.map((step) =>
+        step.id === "step_oferta"
+          ? {
+              ...step,
+              blocks: [
+                {
+                  ...step.blocks.find((b) => b.id === "blk_botao_oferta")!,
+                  visibleIf: {
+                    kind: "leaf" as const,
+                    ref: { source: "score" as const, key: "conversao" },
+                    op: "gte" as const,
+                    value: 3,
+                  },
+                },
+                {
+                  ...segundoBotao,
+                  visibleIf: {
+                    kind: "leaf" as const,
+                    ref: { source: "score" as const, key: "escala" },
+                    op: "gte" as const,
+                    value: 3,
+                  },
+                },
+              ],
+            }
+          : step,
+      ),
+    } as FunnelDocument;
+
+    expect(temCodigo(lintFunnel(doc), "ctas_simultaneos")).toBe(true);
+  });
+
+  it("não reclama quando um dos dois é condicionado", () => {
+    const doc: FunnelDocument = {
+      ...base,
+      steps: base.steps.map((step) =>
+        step.id === "step_oferta"
+          ? {
+              ...step,
+              blocks: [
+                ...step.blocks,
+                {
+                  ...segundoBotao,
+                  visibleIf: {
+                    kind: "leaf" as const,
+                    ref: { source: "answer" as const, key: "objetivo" },
+                    op: "eq" as const,
+                    value: "perder_peso",
+                  },
+                },
+              ],
+            }
+          : step,
+      ),
+    } as FunnelDocument;
+
+    expect(temCodigo(lintFunnel(doc), "ctas_simultaneos")).toBe(false);
+  });
+
+  it("não reclama de um único CTA na tela", () => {
+    expect(temCodigo(lintFunnel(base), "ctas_simultaneos")).toBe(false);
+  });
+});
+
 describe("fim marcado no meio do funil", () => {
   it("aponta a causa, e não só as telas órfãs", () => {
     // Foi assim que um funil real foi ao ar: oferta marcada como fim, com o

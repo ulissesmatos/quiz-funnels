@@ -48,7 +48,9 @@ export const aiToolSchemas = {
         .enum(["question", "content", "loading", "result", "form", "checkout"])
         .describe("question = uma pergunta; loading = personalizando o plano; result = diagnóstico"),
       afterStepId: SlugId.optional().describe("Insere depois desta tela; omitido, entra no fim"),
-      id: SlugId.optional().describe("Id sugerido; se colidir, ganha sufixo automaticamente"),
+      id: SlugId.optional().describe(
+        "Id explícito da tela. Se você vai referenciá-la por id em next, goto, rules ou branch_by_answer, informe aqui — sem isso o id sai do nome inteiro (ex.: 'Seu produto hoje' vira 'step_seu_produto_hoje', não 'step_produto'), e a referência quebra. Se colidir com um id existente, ganha sufixo automático.",
+      ),
     })
     .strict(),
 

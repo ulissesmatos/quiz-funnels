@@ -1,4 +1,5 @@
-import { walkBlocks } from "../schema/block";
+import { walkBlocks, type Block } from "../schema/block";
+import type { Condition } from "../schema/common";
 import type { FunnelDocument } from "../schema/funnel";
 
 /**
@@ -26,7 +27,8 @@ export type FunnelIssue = {
     | "campo_duplicado"
     | "tela_vazia"
     | "sem_personalizacao"
-    | "fim_prematuro";
+    | "fim_prematuro"
+    | "ctas_simultaneos";
   message: string;
   stepId?: string;
   blockId?: string;
@@ -206,9 +208,56 @@ export function lintFunnel(doc: FunnelDocument): FunnelIssue[] {
     });
   }
 
+  // ── CTAs que podem aparecer juntos ───────────────────────────
+  for (const step of doc.steps) {
+    const arriscados = Array.from(walkBlocks(step.blocks)).filter(
+      (block) => ehCtaFinal(block) && condicaoArriscada(block.visibleIf),
+    );
+
+    if (arriscados.length > 1) {
+      issues.push({
+        severity: "aviso",
+        code: "ctas_simultaneos",
+        stepId: step.id,
+        message: `A tela "${step.name}" tem ${arriscados.length} botões de chamada final (${arriscados.map((b) => b.id).join(", ")}) que podem aparecer ao mesmo tempo: sem condição, ou condicionados por pontuação — duas categorias de score podem passar do limite juntas, então não são excludentes por natureza. Garanta que só um apareça: condicione por uma resposta de múltipla escolha (eq), que é exclusiva porque a pessoa só escolhe um valor, ou leve cada caminho para uma tela própria com regras de roteamento.`,
+      });
+    }
+  }
+
   issues.push(...verificarPersonalizacao(doc));
 
   return issues;
+}
+
+/** Botão ou card de preço que leva a link, WhatsApp ou conclusão do funil. */
+function ehCtaFinal(block: Block): boolean {
+  if (block.type === "pricing") return true;
+  if (block.type !== "button") return false;
+  return block.props.action.kind === "link" || block.props.action.kind === "whatsapp" || block.props.action.kind === "submit";
+}
+
+/**
+ * Uma condição garante exclusão de outro bloco só quando compara uma resposta
+ * de valor único por igualdade — a pessoa só escolheu um valor, então dois
+ * blocos com `eq` em respostas diferentes não aparecem juntos. Pontuação não
+ * tem essa garantia: nada impede duas categorias de passarem do limite ao
+ * mesmo tempo, e foi exatamente isso que empilhou CTAs numa tela real.
+ */
+function condicaoArriscada(condition: Condition | undefined): boolean {
+  if (!condition) return true;
+
+  switch (condition.kind) {
+    case "leaf":
+      return condition.ref.source === "score";
+    case "not":
+      return condicaoArriscada(condition.condition);
+    // E: um braço que já exclui os outros blocos basta para o conjunto herdar essa exclusividade.
+    case "all":
+      return condition.conditions.every(condicaoArriscada);
+    // OU: um braço arriscado é o suficiente para o conjunto todo ser.
+    case "any":
+      return condition.conditions.some(condicaoArriscada);
+  }
 }
 
 /**

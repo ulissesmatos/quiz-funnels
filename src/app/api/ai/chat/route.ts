@@ -105,9 +105,25 @@ export async function POST(request: Request) {
     system: buildSystemPrompt(documento),
     messages: await convertToModelMessages(messages),
     tools: ferramentas,
-    // Cada tela é uma sequência de chamadas; sem várias rodadas o modelo pararia
-    // depois da primeira ferramenta e deixaria o funil pela metade.
-    stopWhen: stepCountIs(40),
+    // Um funil grande (15-25 telas) passa fácil de 40 chamadas somando
+    // add_step + blocos + regras + o check_funnel do fim; com o teto antigo a
+    // IA ficava sem passos no meio da construção.
+    stopWhen: stepCountIs(80),
+    /**
+     * Sem isto, o prompt de sistema é montado uma vez, antes da primeira
+     * ferramenta — o "Funil atual" nele fica congelado no estado de ANTES
+     * desta rodada, e dali em diante a IA só enxerga o que criou por conta da
+     * própria memória da conversa (os resumos curtos de cada chamada), nunca
+     * um retrato atualizado de verdade. Num funil de 20+ telas isso é
+     * exatamente onde a IA perde o fio: esquece um id, repete um nome de
+     * campo, ou perde de vista uma tela criada 30 chamadas atrás.
+     *
+     * `prepareStep` roda antes de cada chamada dentro da mesma rodada e deixa
+     * sobrescrever as instructions — então recalculamos com o `documento` já
+     * mutado pelas ferramentas anteriores, e a IA sempre trabalha em cima do
+     * funil como ele está agora, não como estava no começo da conversa.
+     */
+    prepareStep: async () => ({ instructions: buildSystemPrompt(documento) }),
   });
 
   return result.toUIMessageStreamResponse();

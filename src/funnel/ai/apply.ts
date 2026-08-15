@@ -456,14 +456,34 @@ function primeiroBlocoDeEscolha(step: Step, blockId?: string) {
   return null;
 }
 
-function descreverErro(tipo: string, issues: { path: PropertyKey[]; message: string }[]): string {
+type IssueResumido = {
+  path: PropertyKey[];
+  message: string;
+  /** Erro de chave/elemento de record (ex.: uma chave de `scores` fora do padrão) */
+  issues?: IssueResumido[];
+  /** Erro de `z.union`: um lote de issues por alternativa tentada */
+  errors?: IssueResumido[][];
+};
+
+function descreverErro(tipo: string, issues: IssueResumido[]): string {
   const detalhes = issues
     .slice(0, 4)
-    .map((issue) => `${issue.path.join(".") || "props"}: ${issue.message}`)
+    .map((issue) => `${issue.path.join(".") || "props"}: ${mensagemDoIssue(issue)}`)
     .join("; ");
 
   const definition = getBlockDefinition(tipo);
   const exemplo = definition ? ` Exemplo válido: ${JSON.stringify(definition.example)}` : "";
 
   return `As props do bloco "${tipo}" estão inválidas — ${detalhes}.${exemplo}`;
+}
+
+/**
+ * Erro de chave de record (ex.: "valor percebido" em `scores`) ou de união vem
+ * com a mensagem útil escondida um nível abaixo — sozinho, o Zod devolve algo
+ * genérico como "Invalid key in record", que não diz à IA o que corrigir.
+ */
+function mensagemDoIssue(issue: IssueResumido): string {
+  if (issue.issues?.[0]) return mensagemDoIssue(issue.issues[0]);
+  if (issue.errors?.[0]?.[0]) return mensagemDoIssue(issue.errors[0][0]);
+  return issue.message;
 }

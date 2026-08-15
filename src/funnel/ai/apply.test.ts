@@ -38,6 +38,33 @@ describe("aplicação de chamadas da IA", () => {
     expect(resultado.error).toContain("Exemplo válido");
   });
 
+  it("aponta a chave inválida de scores, não só o erro genérico do Zod", () => {
+    const resultado = aplicarChamadaDaIa(base, "add_block", {
+      stepId: "step_inicio",
+      type: "choice",
+      props: {
+        name: "pergunta_teste",
+        multiple: false,
+        layout: "list",
+        autoAdvance: true,
+        required: true,
+        showLetters: false,
+        options: [
+          { id: "a", label: "Opção A", scores: { "valor percebido": 3 } },
+          { id: "b", label: "Opção B" },
+        ],
+      },
+    });
+
+    expect(resultado.ok).toBe(false);
+    if (resultado.ok) return;
+
+    // Sem o fix, a mensagem seria só "Invalid key in record" — inútil para o
+    // modelo corrigir sozinho.
+    expect(resultado.error).not.toContain("Invalid key in record");
+    expect(resultado.error).toContain("letra minúscula");
+  });
+
   it("recusa um tipo de bloco inexistente", () => {
     const resultado = aplicarChamadaDaIa(base, "add_block", {
       stepId: "step_inicio",
