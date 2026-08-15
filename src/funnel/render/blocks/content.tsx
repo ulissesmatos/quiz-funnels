@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, ChevronLeft } from "lucide-react";
 
 import { progressPercent } from "../../logic/context";
 import type { PropsOf } from "../../schema/block";
@@ -107,34 +107,50 @@ export function SpacerBlock({ props }: { props: PropsOf<"spacer"> }) {
 }
 
 export function ProgressBlock({ props }: { props: PropsOf<"progress"> }) {
-  const { context } = useFunnelRuntime();
+  const { context, back, canGoBack, interactive } = useFunnelRuntime();
 
   const percent =
     props.mode === "manual" ? (props.value ?? 0) : progressPercent(context);
   const clamped = Math.max(0, Math.min(100, percent));
+  const podeVoltar = props.showBack !== false && canGoBack;
 
   return (
     <div className={props.sticky ? "fn-progress-sticky" : undefined}>
-      {props.showLabel && (
-        <div className="fn-progress-label">
-          {props.label ? (
-            <RichText as="span" text={props.label} context={context} />
-          ) : (
-            <span>
-              Etapa {context.stepIndex + 1} de {context.stepCount}
-            </span>
+      <div className="fn-progress-row">
+        {podeVoltar && (
+          <button
+            type="button"
+            className="fn-progress-back"
+            onClick={() => interactive && back()}
+            aria-label="Voltar para a pergunta anterior"
+          >
+            <ChevronLeft size={18} strokeWidth={2.5} />
+          </button>
+        )}
+
+        <div className="fn-progress-main">
+          {props.showLabel && (
+            <div className="fn-progress-label">
+              {props.label ? (
+                <RichText as="span" text={props.label} context={context} />
+              ) : (
+                <span>
+                  Etapa {context.stepIndex + 1} de {context.stepCount}
+                </span>
+              )}
+              {!props.label && <span>{clamped}%</span>}
+            </div>
           )}
-          {!props.label && <span>{clamped}%</span>}
+          <div
+            className="fn-progress-track"
+            role="progressbar"
+            aria-valuenow={clamped}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div className="fn-progress-bar" style={{ width: `${clamped}%` }} />
+          </div>
         </div>
-      )}
-      <div
-        className="fn-progress-track"
-        role="progressbar"
-        aria-valuenow={clamped}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <div className="fn-progress-bar" style={{ width: `${clamped}%` }} />
       </div>
     </div>
   );

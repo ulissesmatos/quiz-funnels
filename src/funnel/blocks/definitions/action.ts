@@ -39,9 +39,15 @@ export const loaderBlock = defineBlock({
   category: "acao",
   icon: "Loader",
   description:
-    "A tela de 'Personalizando seu plano': progresso animado percorrendo etapas de texto, como se algo estivesse sendo calculado. É um dos padrões de maior conversão em funis (usado por Noom, BetterMe e similares) porque dá peso ao resultado que vem em seguida. Coloque logo antes do step de resultado. Ao terminar, executa a ação configurada — normalmente avançar.",
+    "A tela de 'Personalizando seu plano': progresso animado percorrendo etapas de texto, como se algo estivesse sendo calculado. É um dos padrões de maior conversão em funis (usado por Noom, BetterMe e similares) porque dá peso ao resultado que vem em seguida. Coloque logo antes do step de resultado. Ao terminar, executa a ação configurada — normalmente avançar. Três visuais em 'layout': 'anel' (padrão, anel de progresso com a lista de etapas ao lado — o mais 'técnico'), 'barra' (barra horizontal com a lista abaixo — mais linear, bom quando há bastante etapa), 'pulso' (ícone pulsando com uma etapa grande por vez, sem lista — o mais leve e 'humano', bom pra funil curto).",
   props: z
     .object({
+      layout: z
+        .enum(["anel", "barra", "pulso"])
+        .optional()
+        .describe(
+          "Visual do carregamento; omitido usa 'anel'. Varie entre telas de loader do mesmo funil se houver mais de uma.",
+        ),
       title: z.string().describe("Título fixo acima do progresso. Aceita interpolação."),
       subtitle: z.string().optional(),
       steps: z
@@ -61,6 +67,7 @@ export const loaderBlock = defineBlock({
     })
     .strict(),
   defaults: {
+    layout: "anel",
     title: "Personalizando seu plano...",
     steps: [
       { label: "Analisando suas respostas", durationMs: 1400 },
@@ -71,6 +78,7 @@ export const loaderBlock = defineBlock({
     onFinish: { kind: "next" },
   },
   example: {
+    layout: "anel",
     title: "Estamos montando seu plano, {{nome}}",
     subtitle: "Isso leva só alguns segundos",
     steps: [

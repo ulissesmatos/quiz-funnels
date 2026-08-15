@@ -57,6 +57,31 @@ export const pricingBlock = defineBlock({
   },
 });
 
+export const guaranteeBlock = defineBlock({
+  type: "guarantee",
+  label: "Garantia",
+  category: "acao",
+  icon: "ShieldCheck",
+  description:
+    "Selo de garantia de reembolso — o argumento que remove o medo de comprar errado. Use logo abaixo ou ao lado do pricing, na tela de oferta. Não use mais de um por tela: o efeito é ser a exceção que salta.",
+  props: z
+    .object({
+      days: z.number().min(1).max(365).describe("Prazo em dias para pedir reembolso"),
+      title: z.string().optional().describe("Sobrescreve o título padrão 'Garantia de N dias'"),
+      text: z.string().describe("Explica a condição em uma frase, ex.: 'Não gostou? Devolvemos 100%, sem perguntas.'"),
+    })
+    .strict(),
+  defaults: {
+    days: 7,
+    text: "Se não for pra você, devolvemos seu dinheiro. Sem perguntas.",
+  },
+  example: {
+    days: 7,
+    title: "Garantia incondicional de 7 dias",
+    text: "Não gostou nos primeiros 7 dias? Devolvemos 100% do valor, sem perguntas.",
+  },
+});
+
 export const countdownBlock = defineBlock({
   type: "countdown",
   label: "Contagem regressiva",

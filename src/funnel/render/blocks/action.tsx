@@ -4,6 +4,7 @@ import { Check, Loader2, icons } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { evaluateCondition } from "../../logic/conditions";
+import type { FunnelContext } from "../../logic/context";
 import type { PropsOf } from "../../schema/block";
 import type { Theme } from "../../schema/theme";
 import { RichText, plainText } from "../rich-text";
@@ -89,9 +90,10 @@ export function LoaderBlock({ props }: { props: PropsOf<"loader"> }) {
 
   const percent = totalMs === 0 ? 100 : Math.min(100, Math.round((elapsed / totalMs) * 100));
   const currentIndex = stepIndexAt(props.steps, elapsed);
+  const layout = props.layout ?? "anel";
 
   return (
-    <div className="fn-loader">
+    <div className="fn-loader" data-layout={layout}>
       {props.title && (
         <RichText as="h2" text={props.title} context={context} className="fn-heading" />
       )}
@@ -99,30 +101,70 @@ export function LoaderBlock({ props }: { props: PropsOf<"loader"> }) {
         <RichText text={props.subtitle} context={context} className="fn-text" />
       )}
 
-      <div className="fn-loader-ring">
-        <ProgressRing percent={percent} />
-        {props.showPercent && <span className="fn-loader-percent">{percent}%</span>}
-      </div>
+      {layout === "anel" && (
+        <>
+          <div className="fn-loader-ring">
+            <ProgressRing percent={percent} />
+            {props.showPercent && <span className="fn-loader-percent">{percent}%</span>}
+          </div>
+          <LoaderSteps steps={props.steps} currentIndex={currentIndex} context={context} />
+        </>
+      )}
 
-      <ul className="fn-loader-steps">
-        {props.steps.map((step, index) => {
-          const state = index < currentIndex ? "done" : index === currentIndex ? "active" : "todo";
+      {layout === "barra" && (
+        <>
+          <div className="fn-loader-bar">
+            <div className="fn-loader-bar-track">
+              <div className="fn-loader-bar-fill" style={{ width: `${percent}%` }} />
+            </div>
+            {props.showPercent && <span className="fn-loader-bar-percent">{percent}%</span>}
+          </div>
+          <LoaderSteps steps={props.steps} currentIndex={currentIndex} context={context} />
+        </>
+      )}
 
-          return (
-            <li key={index} className="fn-loader-step" data-state={state}>
-              <span className="fn-loader-step-icon">
-                {state === "done" ? (
-                  <Check size={12} strokeWidth={3} />
-                ) : state === "active" ? (
-                  <Loader2 size={12} className="fn-spin" />
-                ) : null}
-              </span>
-              {plainText(step.label, context)}
-            </li>
-          );
-        })}
-      </ul>
+      {layout === "pulso" && (
+        <div className="fn-loader-pulse">
+          <span className="fn-loader-pulse-dot" />
+          <p className="fn-loader-pulse-label" key={currentIndex}>
+            {plainText(props.steps[currentIndex]?.label ?? "", context)}
+          </p>
+          {props.showPercent && <span className="fn-loader-pulse-percent">{percent}%</span>}
+        </div>
+      )}
     </div>
+  );
+}
+
+/** Lista de etapas, compartilhada pelos layouts 'anel' e 'barra'. */
+function LoaderSteps({
+  steps,
+  currentIndex,
+  context,
+}: {
+  steps: PropsOf<"loader">["steps"];
+  currentIndex: number;
+  context: FunnelContext;
+}) {
+  return (
+    <ul className="fn-loader-steps">
+      {steps.map((step, index) => {
+        const state = index < currentIndex ? "done" : index === currentIndex ? "active" : "todo";
+
+        return (
+          <li key={index} className="fn-loader-step" data-state={state}>
+            <span className="fn-loader-step-icon">
+              {state === "done" ? (
+                <Check size={12} strokeWidth={3} />
+              ) : state === "active" ? (
+                <Loader2 size={12} className="fn-spin" />
+              ) : null}
+            </span>
+            {plainText(step.label, context)}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

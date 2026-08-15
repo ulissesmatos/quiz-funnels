@@ -1,6 +1,6 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { PropsOf } from "../../schema/block";
@@ -61,6 +61,23 @@ export function PricingBlock({ props, theme }: { props: PropsOf<"pricing">; them
         >
           <span className="fn-button-row">{plainText(props.actionLabel, context)}</span>
         </button>
+      </div>
+    </div>
+  );
+}
+
+export function GuaranteeBlock({ props }: { props: PropsOf<"guarantee"> }) {
+  const { context } = useFunnelRuntime();
+  const titulo = props.title ? plainText(props.title, context) : `Garantia de ${props.days} dias`;
+
+  return (
+    <div className="fn-guarantee">
+      <span className="fn-guarantee-icon" aria-hidden>
+        <ShieldCheck size={26} strokeWidth={2} />
+      </span>
+      <div className="fn-guarantee-body">
+        <strong className="fn-guarantee-title">{titulo}</strong>
+        <RichText text={props.text} context={context} className="fn-guarantee-text" />
       </div>
     </div>
   );
@@ -171,15 +188,22 @@ const INTENSIDADE = { sutil: 60, medio: 140, forte: 260 } as const;
 
 export function ConfettiBlock({ props }: { props: PropsOf<"confetti"> }) {
   const { interactive } = useFunnelRuntime();
-  const jaDisparou = useRef(false);
 
   useEffect(() => {
-    if (!interactive || jaDisparou.current) return;
-    jaDisparou.current = true;
+    if (!interactive) return;
 
     let cancelado = false;
 
-    // Import dinâmico: quem não usa o bloco não carrega a biblioteca.
+    /**
+     * Nunca guarde "já disparei" numa ref para pular execuções repetidas
+     * daqui: em dev, o StrictMode monta, desmonta e monta de novo o mesmo
+     * componente para testar o cleanup — a mesma ref sobrevive às duas
+     * execuções. Uma ref "já disparei" fica `true` na primeira passada,
+     * que é cancelada pelo desmonte, e bloqueia a segunda passada, que é a
+     * que sobrevive — o confete nunca dispara. `cancelado` isolado por
+     * execução já resolve sozinho: a primeira passada é cancelada e some, a
+     * segunda não é cancelada e dispara normalmente.
+     */
     void import("canvas-confetti").then(({ default: confetti }) => {
       if (cancelado) return;
 
@@ -189,12 +213,27 @@ export function ConfettiBlock({ props }: { props: PropsOf<"confetti"> }) {
       const total = INTENSIDADE[props.intensity];
       const fim = Date.now() + props.durationMs;
 
+      // Dois canhões, um em cada borda, atirando para dentro — não um jato
+      // só saindo do meio da tela. É o padrão "de festa" clássico do
+      // canvas-confetti, e cobre a largura toda em vez de um ponto central.
+      const porLado = Math.max(2, Math.round(total / 16));
+
       const disparar = () => {
         confetti({
-          particleCount: Math.round(total / 8),
-          spread: 70,
-          startVelocity: 38,
-          origin: { y: 0.35 },
+          particleCount: porLado,
+          angle: 60,
+          spread: 55,
+          startVelocity: 45,
+          origin: { x: 0, y: 0.75 },
+          colors: cores,
+          disableForReducedMotion: true,
+        });
+        confetti({
+          particleCount: porLado,
+          angle: 120,
+          spread: 55,
+          startVelocity: 45,
+          origin: { x: 1, y: 0.75 },
           colors: cores,
           disableForReducedMotion: true,
         });
@@ -214,18 +253,29 @@ export function ConfettiBlock({ props }: { props: PropsOf<"confetti"> }) {
   return null;
 }
 
-/** Sem cores declaradas, o confete usa a identidade do funil. */
+const CORES_PADRAO = ["#6c4bf6", "#22d3a7", "#22c55e", "#ef4444", "#eab308"];
+
+/**
+ * Sem cores declaradas, o confete usa a identidade do funil — mas só
+ * primary+accent+text dava dois tons e um branco/preto sem graça. Somando
+ * success/danger/warning (as outras cores nomeadas do tema) sai um confete
+ * com mais variação sem sair da paleta escolhida.
+ */
 function lerCoresDoTema(): string[] {
-  if (typeof window === "undefined") return ["#6c4bf6"];
+  if (typeof window === "undefined") return CORES_PADRAO;
 
   const raiz = document.querySelector(".fn-root");
-  if (!raiz) return ["#6c4bf6"];
+  if (!raiz) return CORES_PADRAO;
 
   const estilo = getComputedStyle(raiz);
+  const ler = (token: string, fallback: string) => estilo.getPropertyValue(token).trim() || fallback;
+
   return [
-    estilo.getPropertyValue("--fn-color-primary").trim() || "#6c4bf6",
-    estilo.getPropertyValue("--fn-color-accent").trim() || "#22d3a7",
-    estilo.getPropertyValue("--fn-color-text").trim() || "#ffffff",
+    ler("--fn-color-primary", CORES_PADRAO[0]),
+    ler("--fn-color-accent", CORES_PADRAO[1]),
+    ler("--fn-color-success", CORES_PADRAO[2]),
+    ler("--fn-color-danger", CORES_PADRAO[3]),
+    ler("--fn-color-warning", CORES_PADRAO[4]),
   ];
 }
 

@@ -14,6 +14,7 @@ import {
   confettiBlock,
   countdownBlock,
   embedBlock,
+  guaranteeBlock,
   pricingBlock,
 } from "./definitions/offer";
 import {
@@ -59,6 +60,7 @@ export const leafBlockDefinitions = [
   loaderBlock,
   resultBlock,
   pricingBlock,
+  guaranteeBlock,
   countdownBlock,
   confettiBlock,
   // Prova social

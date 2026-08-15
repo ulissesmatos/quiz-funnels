@@ -17,7 +17,7 @@ import {
 import { CartesianBlock, ChartBlock, CompareBlock, LevelBlock } from "./blocks/data";
 import { ChoiceBlock, InputBlock } from "./blocks/input";
 import { AudioBlock, CarouselBlock, ImageBlock, VideoBlock } from "./blocks/media";
-import { ConfettiBlock, CountdownBlock, EmbedBlock, PricingBlock } from "./blocks/offer";
+import { ConfettiBlock, CountdownBlock, EmbedBlock, GuaranteeBlock, PricingBlock } from "./blocks/offer";
 import {
   AlertBlock,
   CardsBlock,
@@ -115,6 +115,8 @@ function BlockContent({ block, theme }: { block: Block; theme: Theme }) {
 
     case "pricing":
       return <PricingBlock props={block.props} theme={theme} />;
+    case "guarantee":
+      return <GuaranteeBlock props={block.props} />;
     case "countdown":
       return <CountdownBlock props={block.props} blockId={block.id} />;
     case "confetti":

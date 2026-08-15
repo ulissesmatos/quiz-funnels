@@ -134,7 +134,7 @@ export const progressBlock = defineBlock({
   category: "layout",
   icon: "LoaderPinwheel",
   description:
-    "Barra que mostra o avanço no funil. No modo 'auto' ela se calcula sozinha pela posição do step atual — é o modo recomendado. Colocar no topo de cada pergunta aumenta bastante a taxa de conclusão.",
+    "Barra que mostra o avanço no funil. No modo 'auto' ela se calcula sozinha pela posição do step atual — é o modo recomendado. Colocar no topo de cada pergunta aumenta bastante a taxa de conclusão. Já vem com uma seta de voltar (showBack) que some sozinha na primeira tela; desligue só se a resposta anterior não puder ser trocada.",
   props: z
     .object({
       mode: z
@@ -152,8 +152,14 @@ export const progressBlock = defineBlock({
         .describe(
           "Fixa a barra no topo da tela em vez de deixá-la seguir o fluxo. Recomendado em telas de pergunta, que são centralizadas verticalmente.",
         ),
+      showBack: z
+        .boolean()
+        .optional()
+        .describe(
+          "Mostra uma seta para voltar à tela anterior, ao lado da barra. Some sozinha na primeira tela, mesmo com isto ligado. Padrão: ligado.",
+        ),
     })
     .strict(),
-  defaults: { mode: "auto", showLabel: false, sticky: true },
-  example: { mode: "auto", showLabel: true, label: "{{progresso}}% concluído", sticky: true },
+  defaults: { mode: "auto", showLabel: false, sticky: true, showBack: true },
+  example: { mode: "auto", showLabel: true, label: "{{progresso}}% concluído", sticky: true, showBack: true },
 });
