@@ -58,6 +58,7 @@
 .fl-node--erro { border-color: var(--color-app-danger); }
 
 .fl-node-head { display: flex; align-items: center; gap: 7px; }
+.fl-node-icone { flex-shrink: 0; color: var(--color-app-muted); }
 .fl-node-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; }
 
 .fl-node-index {

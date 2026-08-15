@@ -3,20 +3,12 @@
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import { AlertCircle, PencilLine, Split } from "lucide-react";
 
+import { Icon } from "@/components/ui/icon";
 import { walkBlocks } from "@/funnel/schema/block";
-import type { StepType } from "@/funnel/schema/step";
+import { stepTypeMeta } from "@/funnel/schema/step";
 import { cn } from "@/lib/cn";
 
 import type { StepNodeData } from "./graph";
-
-const ICONES: Record<StepType, string> = {
-  question: "❓",
-  content: "📄",
-  loading: "⏳",
-  result: "✨",
-  form: "📝",
-  checkout: "🛒",
-};
 
 /**
  * Card de uma tela no mapa.
@@ -39,7 +31,7 @@ export function StepNode({ data, selected }: NodeProps & { data: StepNodeData })
       <Handle type="target" position={Position.Left} className="fl-handle" />
 
       <div className="fl-node-head">
-        <span aria-hidden>{ICONES[step.type]}</span>
+        <Icon name={stepTypeMeta[step.type].icon} size={14} className="fl-node-icone" />
         <span className="fl-node-name">{step.name}</span>
         <span className="fl-node-index">{index + 1}</span>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, ImageIcon, Mic, Pause, Play, PlayCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Mic, Pause, Play, PlayCircle } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { PropsOf } from "../../schema/block";
@@ -12,14 +12,10 @@ export function ImageBlock({ props }: { props: PropsOf<"image"> }) {
   const { context } = useFunnelRuntime();
   const aspect = resolveAspect(props.aspect);
 
-  if (!props.image.url) {
-    return (
-      <div className="fn-media-placeholder">
-        <ImageIcon size={22} />
-        <span>Escolha uma imagem</span>
-      </div>
-    );
-  }
+  // Bloco sem imagem some. O aviso de "escolha uma imagem" é responsabilidade
+  // do canvas do editor, via `emptyState` da definição — aqui ele viraria
+  // instrução de edição na cara do visitante.
+  if (!props.image.url) return null;
 
   return (
     <div className="fn-media" style={{ aspectRatio: aspect }}>
@@ -41,14 +37,7 @@ export function ImageBlock({ props }: { props: PropsOf<"image"> }) {
 export function VideoBlock({ props }: { props: PropsOf<"video"> }) {
   const aspect = resolveAspect(props.aspect) ?? "16 / 9";
 
-  if (!props.src) {
-    return (
-      <div className="fn-media-placeholder">
-        <PlayCircle size={22} />
-        <span>Cole a URL do vídeo</span>
-      </div>
-    );
-  }
+  if (!props.src) return null;
 
   if (props.provider === "file") {
     return (
@@ -120,14 +109,7 @@ export function AudioBlock({ props }: { props: PropsOf<"audio"> }) {
     };
   }, []);
 
-  if (!props.src) {
-    return (
-      <div className="fn-media-placeholder">
-        <Mic size={22} />
-        <span>Cole a URL do áudio</span>
-      </div>
-    );
-  }
+  if (!props.src) return null;
 
   const fracao = duracao > 0 ? progresso / duracao : 0;
   const tempo = duracao > 0 ? formatarTempo(duracao - progresso) : (props.durationLabel ?? "0:00");

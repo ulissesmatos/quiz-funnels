@@ -124,6 +124,8 @@ export const spacerBlock = defineBlock({
   props: z.object({ size: z.number().min(4).max(400).describe("Altura em pixels") }).strict(),
   defaults: { size: 24 },
   example: { size: 32 },
+  // Vazio por definição — no editor precisa aparecer, ou some da tela.
+  emptyState: (props) => `Espaço de ${props.size}px`,
 });
 
 export const progressBlock = defineBlock({

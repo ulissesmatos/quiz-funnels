@@ -11,7 +11,9 @@ import { createContext as createFunnelContext } from "@/funnel/logic/context";
 import { computeScores } from "@/funnel/logic/scoring";
 import type { Block } from "@/funnel/schema/block";
 import { separarBlocosFixos } from "@/funnel/render/step-layout";
+import { getBlockDefinition } from "@/funnel/schema/block";
 import { resolveColor, resolveSpace, themeToCssVars } from "@/funnel/theme/css";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 
 import { useDocument, useEditor } from "./editor-context";
@@ -63,6 +65,7 @@ export function Canvas() {
       canGoBack: stepIndex > 0,
       errors: {},
       interactive: false,
+      mode: "editor",
     };
   }, [doc, step?.id]);
 
@@ -166,6 +169,10 @@ function CanvasBlock({
 
   const rotulo = rotuloDoBloco(block);
 
+  // A definição diz quando o bloco não tem nada visível para desenhar.
+  const definition = getBlockDefinition(block.type);
+  const vazio = definition?.emptyState?.(block.props as never) ?? null;
+
   return (
     <div
       ref={setNodeRef}
@@ -228,45 +235,61 @@ function CanvasBlock({
 
       {/* `pointer-events: none` por CSS: o clique é do canvas, não do bloco. */}
       <div className="ed-block-content">
-        <BlockView block={block} theme={doc.theme} />
+        {vazio ? (
+          <MarcadorDeBlocoVazio tipo={block.type} rotulo={rotulo} mensagem={vazio} />
+        ) : (
+          <BlockView block={block} theme={doc.theme} />
+        )}
       </div>
     </div>
   );
 }
 
+/**
+ * Marcador para um bloco que não desenha nada.
+ *
+ * Sem ele, inserir um confetti ou um espaço parece não ter feito nada, e a
+ * pessoa insere de novo. Existe só no editor: no funil publicado, a ausência é
+ * exatamente o comportamento certo.
+ */
+function MarcadorDeBlocoVazio({
+  tipo,
+  rotulo,
+  mensagem,
+}: {
+  tipo: string;
+  rotulo: string;
+  mensagem: string;
+}) {
+  const definition = getBlockDefinition(tipo);
+
+  return (
+    <div className="ed-vazio">
+      <Icon name={definition?.icon ?? "Square"} size={16} className="ed-vazio-icone" />
+      <span className="ed-vazio-texto">
+        <strong>{rotulo}</strong>
+        {mensagem}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Nome do bloco na barra de ações.
+ *
+ * Vem do registro, não de um `switch` à mão: a lista escrita separadamente
+ * envelhecia a cada bloco novo e ficava mostrando "Bloco" para os recentes.
+ * Campos ganham o nome da variável junto, que é o que distingue um do outro
+ * quando há vários na mesma tela.
+ */
 function rotuloDoBloco(block: Block): string {
-  switch (block.type) {
-    case "heading":
-      return "Título";
-    case "text":
-      return "Texto";
-    case "choice":
-      return `Opções · ${block.props.name}`;
-    case "input":
-      return `Campo · ${block.props.name}`;
-    case "button":
-      return "Botão";
-    case "image":
-      return "Imagem";
-    case "video":
-      return "Vídeo";
-    case "list":
-      return "Lista";
-    case "loader":
-      return "Carregando";
-    case "result":
-      return "Resultado";
-    case "progress":
-      return "Progresso";
-    case "divider":
-      return "Divisor";
-    case "spacer":
-      return "Espaço";
-    case "container":
-      return "Colunas";
-    default:
-      return "Bloco";
+  const label = getBlockDefinition(block.type)?.label ?? "Bloco";
+
+  if (block.type === "choice" || block.type === "input") {
+    return `${label} · ${block.props.name}`;
   }
+
+  return label;
 }
 
 /**

@@ -176,7 +176,7 @@ export const faqBlock = defineBlock({
   type: "faq",
   label: "FAQ",
   category: "conteudo",
-  icon: "CircleHelp",
+  icon: "CircleQuestionMark",
   description:
     "Perguntas frequentes em acordeão. Coloque na tela de oferta, respondendo as objeções reais — preço, tempo, garantia, 'funciona para o meu caso'. Cada item aberto ocupa espaço, então comece todos fechados.",
   props: z

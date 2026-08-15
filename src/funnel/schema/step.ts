@@ -14,6 +14,22 @@ export const StepType = z
     "question = uma pergunta; content = tela de conteúdo/prova social; loading = 'personalizando seu plano'; result = diagnóstico; form = captura de dados; checkout = oferta final",
   );
 
+/**
+ * Rótulo e ícone de cada tipo de tela.
+ *
+ * Fica aqui, ao lado do enum, porque estava repetido em três lugares — lista de
+ * telas, nó do fluxo e seletor do inspector — e os três divergiam. O ícone é o
+ * nome em `lucide-react`, mesma convenção das definições de bloco.
+ */
+export const stepTypeMeta = {
+  question: { label: "Pergunta", icon: "CircleQuestionMark" },
+  content: { label: "Conteúdo", icon: "FileText" },
+  loading: { label: "Personalizando", icon: "Hourglass" },
+  result: { label: "Resultado", icon: "Sparkles" },
+  form: { label: "Captura de dados", icon: "ClipboardType" },
+  checkout: { label: "Oferta", icon: "ShoppingCart" },
+} as const satisfies Record<z.infer<typeof StepType>, { label: string; icon: string }>;
+
 export const StepBackground = z
   .object({
     color: ColorValue.optional(),

@@ -2,20 +2,12 @@
 
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 
+import { Icon } from "@/components/ui/icon";
 import { createStep } from "@/funnel/ops";
-import type { StepType } from "@/funnel/schema/step";
+import { stepTypeMeta } from "@/funnel/schema/step";
 import { cn } from "@/lib/cn";
 
 import { useDocument, useEditor, useEditorStore } from "./editor-context";
-
-const ICONES_POR_TIPO: Record<StepType, string> = {
-  question: "❓",
-  content: "📄",
-  loading: "⏳",
-  result: "✨",
-  form: "📝",
-  checkout: "🛒",
-};
 
 export function StepsPanel({ onTelaSelecionada }: { onTelaSelecionada?: () => void }) {
   const doc = useDocument();
@@ -33,15 +25,15 @@ export function StepsPanel({ onTelaSelecionada }: { onTelaSelecionada?: () => vo
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-xs font-medium tracking-wide text-app-muted uppercase">
-          Telas ({doc.steps.length})
-        </h3>
+        <span className="text-xs text-app-muted">
+          {doc.steps.length} {doc.steps.length === 1 ? "tela" : "telas"}
+        </span>
         <button
           type="button"
           onClick={adicionarStep}
           className="flex items-center gap-1 rounded-md px-1.5 py-1 text-xs text-app-muted hover:bg-app-surface-2 hover:text-app-text"
         >
-          <Plus size={13} /> Nova
+          <Plus size={13} /> Nova tela
         </button>
       </div>
 
@@ -65,11 +57,13 @@ export function StepsPanel({ onTelaSelecionada }: { onTelaSelecionada?: () => vo
                     selectStep(step.id);
                     onTelaSelecionada?.();
                   }}
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                 >
-                  <span className="text-sm" aria-hidden>
-                    {ICONES_POR_TIPO[step.type]}
-                  </span>
+                  <Icon
+                    name={stepTypeMeta[step.type].icon}
+                    size={15}
+                    className={ativo ? "text-app-primary" : "text-app-muted"}
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm">{step.name}</span>
                     <span className="block text-[11px] text-app-muted">

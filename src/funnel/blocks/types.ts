@@ -53,6 +53,19 @@ export interface BlockDefinition<
    * pontuação e pode ser referenciado por condições (`source: "answer"`).
    */
   isInput?: boolean;
+
+  /**
+   * O que dizer no editor quando o bloco não desenha nada na tela.
+   *
+   * Alguns blocos são invisíveis por natureza (confetti dispara e some, espaço
+   * é vazio) e outros ficam invisíveis até serem configurados (imagem sem URL).
+   * Nos dois casos, no funil publicado a ausência é o comportamento certo — mas
+   * no editor ela vira um bloco fantasma, que a pessoa acha que não foi
+   * inserido. Devolvendo um texto aqui, o canvas mostra um marcador no lugar.
+   *
+   * Devolva `null` quando houver conteúdo visível.
+   */
+  emptyState?: (props: z.infer<TProps>) => string | null;
 }
 
 /** Helper que preserva os tipos literais ao declarar uma definição. */
@@ -80,4 +93,5 @@ export type AnyBlockDefinition = {
   readonly props: z.ZodType;
   readonly defaults: unknown;
   readonly isInput?: boolean;
+  readonly emptyState?: (props: never) => string | null;
 };

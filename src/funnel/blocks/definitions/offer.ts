@@ -81,6 +81,8 @@ export const countdownBlock = defineBlock({
     label: "Sua condição especial expira em",
     expiredText: "Tempo esgotado",
   },
+  emptyState: (props) =>
+    props.mode === "data" && !props.endsAt ? "Defina a data em que a contagem termina" : null,
 });
 
 export const confettiBlock = defineBlock({
@@ -103,6 +105,8 @@ export const confettiBlock = defineBlock({
     .strict(),
   defaults: { intensity: "medio", durationMs: 2500 },
   example: { intensity: "forte", durationMs: 3000, colors: ["#5b8cff", "#31d6a0", "#ffffff"] },
+  // Nunca desenha nada: o confete é disparado num canvas próprio, por cima.
+  emptyState: (props) => `Dispara confete ${props.intensity} ao abrir a tela`,
 });
 
 export const embedBlock = defineBlock({
@@ -125,4 +129,5 @@ export const embedBlock = defineBlock({
     height: 420,
     scrolling: false,
   },
+  emptyState: (props) => (props.html.trim() ? null : "Cole o HTML do embed"),
 });

@@ -11,7 +11,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { Blocks, SlidersHorizontal } from "lucide-react";
+import { Blocks, Layers, SlidersHorizontal } from "lucide-react";
 import { useState } from "react";
 
 import { createBlock } from "@/funnel/ops";
@@ -52,6 +52,7 @@ function EditorLayout({ funnelId }: { funnelId: string }) {
   const [abaInspector, setAbaInspector] = useState<AbaInspector>("bloco");
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [vista, setVista] = useState<Vista>("construtor");
+  const [abaEsquerda, setAbaEsquerda] = useState<"telas" | "elementos">("telas");
 
   const fecharGaveta = () => setPainelMobile("canvas");
 
@@ -135,8 +136,39 @@ function EditorLayout({ funnelId }: { funnelId: string }) {
             aberto={painelMobile === "estrutura"}
             onFechar={fecharGaveta}
           >
-            <StepsPanel onTelaSelecionada={fecharGaveta} />
-            <Palette onBlocoAdicionado={fecharGaveta} />
+            {/* Telas e elementos em abas: empilhados, um funil de 26 telas
+                empurrava a paleta para fora da vista. */}
+            <div className="flex shrink-0 gap-1 rounded-lg bg-app-surface-2 p-1">
+              {(
+                [
+                  { chave: "telas", rotulo: "Telas", Icone: Layers },
+                  { chave: "elementos", rotulo: "Elementos", Icone: Blocks },
+                ] as const
+              ).map(({ chave, rotulo, Icone }) => (
+                <button
+                  key={chave}
+                  type="button"
+                  onClick={() => setAbaEsquerda(chave)}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-xs transition-colors",
+                    abaEsquerda === chave
+                      ? "bg-app-surface text-app-text"
+                      : "text-app-muted hover:text-app-text",
+                  )}
+                >
+                  <Icone size={13} />
+                  {rotulo}
+                </button>
+              ))}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {abaEsquerda === "telas" ? (
+                <StepsPanel onTelaSelecionada={fecharGaveta} />
+              ) : (
+                <Palette onBlocoAdicionado={fecharGaveta} />
+              )}
+            </div>
           </PainelLateral>
 
           <main className="flex min-w-0 flex-1 flex-col">
@@ -219,15 +251,17 @@ function PainelLateral({
 
       <aside
         className={cn(
-          "flex flex-col gap-5 bg-app-surface",
+          // A rolagem é de quem está dentro, não do painel: assim o cabeçalho
+          // de abas fica parado enquanto a lista rola.
+          "flex flex-col gap-3 overflow-hidden bg-app-surface",
           // Celular: gaveta ancorada no rodapé, acima da barra de navegação.
-          "fixed inset-x-0 bottom-[52px] z-50 max-h-[70dvh] overflow-y-auto rounded-t-2xl border-t border-app-border p-3",
+          "fixed inset-x-0 bottom-[52px] z-50 max-h-[70dvh] rounded-t-2xl border-t border-app-border p-3",
           aberto ? "flex" : "hidden",
           // Desktop: volta a ser coluna no fluxo normal.
           "lg:static lg:z-auto lg:flex lg:max-h-none lg:w-64 lg:rounded-none lg:border-t-0 lg:p-3",
           lado === "esquerda"
             ? "lg:shrink-0 lg:border-r lg:border-app-border"
-            : "lg:w-72 lg:shrink-0 lg:gap-0 lg:overflow-hidden lg:border-l lg:border-app-border lg:p-0",
+            : "lg:w-72 lg:shrink-0 lg:gap-0 lg:border-l lg:border-app-border lg:p-0",
         )}
       >
         {children}

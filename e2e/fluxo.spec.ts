@@ -37,10 +37,13 @@ test.describe("canvas de fluxo", () => {
     // A aresta mostra a condição com o texto da opção, não com o id.
     await expect(page.getByText('"Primeira opção"').first()).toBeVisible();
 
+    // Ramificar dispara várias operações seguidas (telas, regras, posições) e
+    // cada uma reinicia o debounce do autosave; em `next dev` isso passa dos
+    // 20s com facilidade.
     await expect(page.locator("header").getByRole("status")).toHaveAttribute(
       "aria-label",
       "Salvo",
-      { timeout: 20_000 },
+      ESPERA_LENTA,
     );
   });
 
@@ -87,6 +90,8 @@ async function criarFunil(page: Page, nome: string) {
 }
 
 async function abrirPaleta(page: Page) {
-  const botao = page.getByRole("button", { name: "Telas e blocos" });
-  if (await botao.isVisible()) await botao.click();
+  const gaveta = page.getByRole("button", { name: "Telas e blocos" });
+  if (await gaveta.isVisible()) await gaveta.click();
+
+  await page.getByRole("button", { name: "Elementos" }).click();
 }

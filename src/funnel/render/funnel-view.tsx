@@ -215,6 +215,7 @@ export function FunnelView({
       canGoBack: history.length > 1,
       errors,
       interactive,
+      mode: "publico",
       runAction,
     }),
     [answerAndAdvance, back, context, errors, history.length, interactive, next, runAction, setAnswer],

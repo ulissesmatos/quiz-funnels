@@ -238,13 +238,7 @@ function lerCoresDoTema(): string[] {
  * poderia injetar script e capturar os leads de um funil que não é dele.
  */
 export function EmbedBlock({ props }: { props: PropsOf<"embed"> }) {
-  if (!props.html.trim()) {
-    return (
-      <div className="fn-media-placeholder">
-        <span>Cole aqui o HTML do embed</span>
-      </div>
-    );
-  }
+  if (!props.html.trim()) return null;
 
   const documento = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;font-family:system-ui,sans-serif;overflow:${props.scrolling ? "auto" : "hidden"}}</style></head><body>${props.html}</body></html>`;
 

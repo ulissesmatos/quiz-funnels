@@ -30,6 +30,15 @@ export type FunnelRuntime = {
    * não navega nem grava resposta.
    */
   interactive: boolean;
+
+  /**
+   * Onde este render está acontecendo.
+   *
+   * Separado de `interactive` porque as duas coisas não são a mesma: um bloco
+   * mal configurado deve mostrar "escolha uma imagem" no editor e **nada** no
+   * funil publicado. Sem essa distinção, o visitante lê instruções de edição.
+   */
+  mode: "publico" | "editor";
 };
 
 const RuntimeContext = createContext<FunnelRuntime | null>(null);

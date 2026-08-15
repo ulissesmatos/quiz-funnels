@@ -31,6 +31,7 @@ export const imageBlock = defineBlock({
     aspect: "4:3",
     fit: "cover",
   },
+  emptyState: (props) => (props.image.url ? null : "Escolha uma imagem"),
 });
 
 export const audioBlock = defineBlock({
@@ -60,6 +61,7 @@ export const audioBlock = defineBlock({
     durationLabel: "0:42",
     autoplay: false,
   },
+  emptyState: (props) => (props.src ? null : "Cole a URL do áudio"),
 });
 
 export const carouselBlock = defineBlock({
@@ -149,4 +151,5 @@ export const videoBlock = defineBlock({
     controls: false,
     aspect: "9:16",
   },
+  emptyState: (props) => (props.src ? null : "Cole a URL do vídeo"),
 });

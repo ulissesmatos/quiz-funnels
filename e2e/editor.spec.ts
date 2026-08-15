@@ -95,10 +95,15 @@ test.describe("editor", () => {
   });
 });
 
-/** No celular a paleta é uma gaveta; no desktop já está visível na lateral. */
+/**
+ * Deixa a paleta de elementos à mão: no celular ela vive numa gaveta, e nos dois
+ * tamanhos fica atrás da aba "Elementos".
+ */
 async function abrirPaleta(page: Page) {
-  const botao = page.getByRole("button", { name: "Telas e blocos" });
-  if (await botao.isVisible()) await botao.click();
+  const gaveta = page.getByRole("button", { name: "Telas e blocos" });
+  if (await gaveta.isVisible()) await gaveta.click();
+
+  await page.getByRole("button", { name: "Elementos" }).click();
 }
 
 async function abrirAjustes(page: Page) {

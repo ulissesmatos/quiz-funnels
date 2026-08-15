@@ -3,6 +3,7 @@
 import { Sparkles } from "lucide-react";
 
 import { getBlockDefinition } from "@/funnel/schema/block";
+import { stepTypeMeta } from "@/funnel/schema/step";
 import { cn } from "@/lib/cn";
 
 import { AiPanel } from "./ai-panel";
@@ -148,12 +149,11 @@ function PainelDaTela() {
             })
           }
         >
-          <option value="question">Pergunta</option>
-          <option value="content">Conteúdo</option>
-          <option value="loading">Personalizando</option>
-          <option value="result">Resultado</option>
-          <option value="form">Captura de dados</option>
-          <option value="checkout">Oferta</option>
+          {Object.entries(stepTypeMeta).map(([chave, meta]) => (
+            <option key={chave} value={chave}>
+              {meta.label}
+            </option>
+          ))}
         </select>
       </label>
 
