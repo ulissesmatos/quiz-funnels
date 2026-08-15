@@ -1,7 +1,8 @@
 import { slugifyId } from "@/lib/slug";
 
+import { lintFunnel, resumirIssues } from "../logic/lint";
 import { applyOp, collectAnswerNames, collectBlockIds, createStep, findBlock, type FunnelOp } from "../ops";
-import { getBlockDefinition, type Block } from "../schema/block";
+import { getBlockDefinition, walkBlocks, type Block } from "../schema/block";
 import type { Condition } from "../schema/common";
 import type { FunnelDocument } from "../schema/funnel";
 import type { Step } from "../schema/step";
@@ -210,6 +211,68 @@ export function aplicarChamadaDaIa(
         );
       }
 
+      case "branch_by_answer": {
+        const { stepId, blockId, branches, replace } = entrada as {
+          stepId: string;
+          blockId?: string;
+          branches: { optionId: string; goto: string }[];
+          replace?: boolean;
+        };
+
+        const step = doc.steps.find((s) => s.id === stepId);
+        if (!step) return { ok: false, error: `A tela "${stepId}" não existe.` };
+
+        const escolha = primeiroBlocoDeEscolha(step, blockId);
+        if (!escolha) {
+          return {
+            ok: false,
+            error: `A tela "${stepId}" não tem bloco de escolha para ramificar. Adicione um bloco "choice" antes.`,
+          };
+        }
+
+        const idsDeOpcao = new Set(escolha.props.options.map((o) => o.id));
+
+        for (const branch of branches) {
+          if (!idsDeOpcao.has(branch.optionId)) {
+            return {
+              ok: false,
+              error: `A opção "${branch.optionId}" não existe em "${escolha.id}". Opções válidas: ${[...idsDeOpcao].join(", ")}.`,
+            };
+          }
+          if (!doc.steps.some((s) => s.id === branch.goto)) {
+            return {
+              ok: false,
+              error: `A tela "${branch.goto}" não existe. Crie-a com add_step antes de ramificar para ela.`,
+            };
+          }
+        }
+
+        return concluir(
+          doc,
+          { type: "branch_by_answer", stepId, blockId: escolha.id, branches, replace },
+          `Ramificação criada em "${step.name}" com ${branches.length} caminhos`,
+          [escolha.id],
+        );
+      }
+
+      case "check_funnel": {
+        const problemas = lintFunnel(doc);
+
+        // Não muda nada, então não passa pelo `concluir` — o valor está no
+        // relatório que volta para o modelo.
+        return {
+          ok: true,
+          doc,
+          resumo: resumirIssues(problemas),
+          blocosTocados: [],
+        };
+      }
+
+      case "ask_user": {
+        // Executada no cliente; o servidor não deveria chegar aqui.
+        return { ok: false, error: "ask_user é respondida pelo usuário, não pelo servidor." };
+      }
+
       case "set_theme": {
         const entradaTema = entrada as Record<string, string | number | undefined>;
         const patch: ThemePatch = {};
@@ -322,6 +385,14 @@ function garantirNomeUnicoDeCampo(doc: FunnelDocument, block: Block) {
       return;
     }
   }
+}
+
+function primeiroBlocoDeEscolha(step: Step, blockId?: string) {
+  for (const block of walkBlocks(step.blocks)) {
+    if (block.type !== "choice") continue;
+    if (!blockId || block.id === blockId) return block;
+  }
+  return null;
 }
 
 function descreverErro(tipo: string, issues: { path: PropertyKey[]; message: string }[]): string {

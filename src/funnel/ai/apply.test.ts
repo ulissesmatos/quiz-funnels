@@ -173,6 +173,110 @@ describe("aplicação de chamadas da IA", () => {
   });
 });
 
+describe("ramificação por resposta", () => {
+  it("cria uma regra por opção, com a condição correta", () => {
+    // Telas de destino primeiro: ramificar para tela inexistente é recusado.
+    let doc = base;
+
+    for (const nome of ["Caminho A", "Caminho B"]) {
+      const resultado = aplicarChamadaDaIa(doc, "add_step", { name: nome, type: "content" });
+      expect(resultado.ok).toBe(true);
+      if (resultado.ok) doc = resultado.doc;
+    }
+
+    const destinos = doc.steps.slice(-2).map((s) => s.id);
+
+    const resultado = aplicarChamadaDaIa(doc, "branch_by_answer", {
+      stepId: "step_objetivo",
+      branches: [
+        { optionId: "perder_peso", goto: destinos[0] },
+        { optionId: "ganhar_massa", goto: destinos[1] },
+      ],
+      replace: true,
+    });
+
+    expect(resultado.ok, resultado.ok ? "" : resultado.error).toBe(true);
+    if (!resultado.ok) return;
+
+    const step = resultado.doc.steps.find((s) => s.id === "step_objetivo")!;
+    expect(step.logic.rules).toHaveLength(2);
+
+    const primeira = step.logic.rules[0];
+    expect(primeira.goto).toBe(destinos[0]);
+    expect(primeira.when).toEqual({
+      kind: "leaf",
+      ref: { source: "answer", key: "objetivo" },
+      op: "eq",
+      value: "perder_peso",
+    });
+
+    expect(parseFunnelDocument(resultado.doc).success).toBe(true);
+  });
+
+  it("recusa opção inexistente e diz quais são as válidas", () => {
+    const resultado = aplicarChamadaDaIa(base, "branch_by_answer", {
+      stepId: "step_objetivo",
+      branches: [
+        { optionId: "opcao_inventada", goto: "step_resultado" },
+        { optionId: "perder_peso", goto: "step_resultado" },
+      ],
+    });
+
+    expect(resultado.ok).toBe(false);
+    if (resultado.ok) return;
+
+    expect(resultado.error).toContain("opcao_inventada");
+    // O erro precisa ensinar o caminho, não só recusar.
+    expect(resultado.error).toContain("perder_peso");
+  });
+
+  it("recusa destino inexistente apontando o que fazer", () => {
+    const resultado = aplicarChamadaDaIa(base, "branch_by_answer", {
+      stepId: "step_objetivo",
+      branches: [
+        { optionId: "perder_peso", goto: "step_que_nao_existe" },
+        { optionId: "ganhar_massa", goto: "step_resultado" },
+      ],
+    });
+
+    expect(resultado.ok).toBe(false);
+    if (!resultado.ok) expect(resultado.error).toContain("add_step");
+  });
+
+  it("recusa ramificar uma tela sem pergunta", () => {
+    const resultado = aplicarChamadaDaIa(base, "branch_by_answer", {
+      stepId: "step_inicio",
+      branches: [
+        { optionId: "a", goto: "step_resultado" },
+        { optionId: "b", goto: "step_resultado" },
+      ],
+    });
+
+    expect(resultado.ok).toBe(false);
+  });
+});
+
+describe("autoconferência", () => {
+  it("check_funnel devolve o relatório sem alterar o documento", () => {
+    const resultado = aplicarChamadaDaIa(base, "check_funnel", {});
+
+    expect(resultado.ok).toBe(true);
+    if (!resultado.ok) return;
+
+    expect(resultado.doc).toBe(base);
+    // O funil de exemplo é o que a IA deve tomar como referência: limpo.
+    expect(resultado.resumo).toContain("Nenhum problema");
+  });
+
+  it("o relatório aponta perguntas em série", () => {
+    const doc = { ...base, steps: [base.steps[1], base.steps[2], base.steps[3], base.steps[5]] };
+    const resultado = aplicarChamadaDaIa(doc, "check_funnel", {});
+
+    expect(resultado.ok).toBe(true);
+    if (resultado.ok) expect(resultado.resumo).toContain("respiro");
+  });
+});
+
 describe("condições achatadas", () => {
   it("uma regra só não vira grupo desnecessário", () => {
     const condicao = converterCondicao({

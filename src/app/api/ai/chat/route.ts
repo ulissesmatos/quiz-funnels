@@ -12,7 +12,12 @@ import { z } from "zod";
 
 import { aplicarChamadaDaIa } from "@/funnel/ai/apply";
 import { buildSystemPrompt } from "@/funnel/ai/prompt";
-import { aiToolDescriptions, aiToolSchemas, type AiToolName } from "@/funnel/ai/tools";
+import {
+  aiToolDescriptions,
+  aiToolSchemas,
+  CLIENT_SIDE_TOOLS,
+  type AiToolName,
+} from "@/funnel/ai/tools";
 import { parseFunnelDocument } from "@/funnel/schema";
 import { env } from "@/lib/env";
 import { requireOrganization } from "@/server/auth/session";
@@ -66,23 +71,33 @@ export async function POST(request: Request) {
    * contrato que o modelo realmente recebe.
    */
   const ferramentas = Object.fromEntries(
-    (Object.keys(aiToolSchemas) as AiToolName[]).map((nome) => [
-      nome,
-      tool({
-        description: aiToolDescriptions[nome],
-        inputSchema: jsonSchema<Record<string, unknown>>(
-          z.toJSONSchema(aiToolSchemas[nome], { target: "draft-7" }) as Record<string, unknown>,
-        ),
-        execute: async (entrada: Record<string, unknown>) => {
-          const resultado = aplicarChamadaDaIa(documento, nome, entrada);
+    (Object.keys(aiToolSchemas) as AiToolName[]).map((nome) => {
+      const inputSchema = jsonSchema<Record<string, unknown>>(
+        z.toJSONSchema(aiToolSchemas[nome], { target: "draft-7" }) as Record<string, unknown>,
+      );
 
-          if (!resultado.ok) return { ok: false, erro: resultado.error };
+      // Sem `execute`, o stream para nesta chamada e devolve o controle ao
+      // cliente, que mostra o popup e responde. É o human-in-the-loop do SDK.
+      if (CLIENT_SIDE_TOOLS.includes(nome)) {
+        return [nome, tool({ description: aiToolDescriptions[nome], inputSchema })];
+      }
 
-          documento = resultado.doc;
-          return { ok: true, resumo: resultado.resumo };
-        },
-      }),
-    ]),
+      return [
+        nome,
+        tool({
+          description: aiToolDescriptions[nome],
+          inputSchema,
+          execute: async (entrada: Record<string, unknown>) => {
+            const resultado = aplicarChamadaDaIa(documento, nome, entrada);
+
+            if (!resultado.ok) return { ok: false, erro: resultado.error };
+
+            documento = resultado.doc;
+            return { ok: true, resumo: resultado.resumo };
+          },
+        }),
+      ];
+    }),
   );
 
   const result = streamText({

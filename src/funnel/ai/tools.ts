@@ -107,6 +107,46 @@ export const aiToolSchemas = {
     })
     .strict(),
 
+  branch_by_answer: z
+    .object({
+      stepId: SlugId.describe("Tela que contém a pergunta"),
+      blockId: SlugId.optional().describe("Bloco de escolha; omitido, usa o primeiro da tela"),
+      branches: z
+        .array(
+          z.object({
+            optionId: VariableKey.describe("Id da opção, exatamente como está no bloco"),
+            goto: SlugId.describe("Tela para onde essa resposta leva"),
+          }),
+        )
+        .min(2)
+        .describe("Um destino por opção. As telas de destino já precisam existir."),
+      replace: z
+        .boolean()
+        .optional()
+        .describe("Substitui as regras existentes em vez de acrescentar. Padrão: acrescenta."),
+    })
+    .strict(),
+
+  check_funnel: z
+    .object({})
+    .strict()
+    .describe("Sem parâmetros"),
+
+  ask_user: z
+    .object({
+      question: z.string().min(1).describe("Pergunta curta e direta, em português"),
+      options: z
+        .array(z.string().min(1))
+        .min(2)
+        .max(4)
+        .describe("Respostas rápidas para a pessoa tocar. Devem cobrir os casos mais prováveis."),
+      allowFreeText: z
+        .boolean()
+        .optional()
+        .describe("Permite responder digitando em vez de escolher. Padrão: permite."),
+    })
+    .strict(),
+
   set_theme: z
     .object({
       bg: z.string().optional().describe("Cor de fundo em hexadecimal"),
@@ -138,7 +178,21 @@ export const aiToolDescriptions: Record<AiToolName, string> = {
   move_block: "Move um bloco para outra posição ou outra tela.",
   set_step_logic:
     "Define para onde o visitante vai ao sair de uma tela, conforme respostas ou pontuação.",
+  branch_by_answer:
+    "Cria de uma vez um caminho por opção de uma pergunta. É a forma correta de ramificar: prefira esta ferramenta a montar as condições uma a uma.",
+  check_funnel:
+    "Confere o funil e devolve os problemas encontrados: telas inalcançáveis, regras quebradas, perguntas demais em sequência, falta de captura. Chame ao terminar de montar.",
+  ask_user:
+    "Faz uma pergunta ao usuário e espera a resposta. Use no máximo uma vez por pedido, e só quando a resposta mudaria o funil de verdade.",
   set_theme: "Ajusta cores, fontes e estilo de botão do funil inteiro.",
 };
+
+/**
+ * Ferramentas que o servidor NÃO executa.
+ *
+ * `ask_user` para o stream e devolve o controle ao cliente, que mostra o popup
+ * e responde por `addToolResult` — é o padrão de human-in-the-loop do AI SDK.
+ */
+export const CLIENT_SIDE_TOOLS: AiToolName[] = ["ask_user"];
 
 export const AI_TOOL_NAMES = Object.keys(aiToolSchemas) as AiToolName[];

@@ -36,11 +36,14 @@ export function AiPanel() {
   const aplicadas = useRef(new Set<string>());
   const fimDaLista = useRef<HTMLDivElement>(null);
 
-  const { messages, sendMessage, status, error, stop } = useChat({
+  const { messages, sendMessage, status, error, stop, addToolResult } = useChat({
     transport: new DefaultChatTransport({ api: "/api/ai/chat", body: { funnelId } }),
   });
 
   const ocupado = status === "submitted" || status === "streaming";
+
+  // Pergunta da IA ainda sem resposta: o stream está parado esperando.
+  const perguntaPendente = encontrarPerguntaPendente(messages);
 
   // Aplica no documento cada chamada de ferramenta que chegou completa.
   useEffect(() => {
@@ -164,7 +167,20 @@ export function AiPanel() {
         <div ref={fimDaLista} />
       </div>
 
-      <div className="shrink-0 border-t border-app-border p-2.5">
+      <div className="relative shrink-0 border-t border-app-border p-2.5">
+        {perguntaPendente && (
+          <PopupDePergunta
+            pergunta={perguntaPendente.input}
+            onResponder={(resposta) =>
+              void addToolResult({
+                tool: "ask_user",
+                toolCallId: perguntaPendente.toolCallId,
+                output: resposta,
+              })
+            }
+          />
+        )}
+
         <div className="flex items-end gap-1.5 rounded-xl border border-app-border bg-app-surface-2 p-1.5">
           <textarea
             value={texto}
@@ -195,6 +211,110 @@ export function AiPanel() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+type PerguntaDaIa = {
+  toolCallId: string;
+  input: { question: string; options: string[]; allowFreeText?: boolean };
+};
+
+/**
+ * Pergunta feita pela IA e ainda sem resposta.
+ *
+ * `ask_user` não tem `execute` no servidor, então o stream para nela e a
+ * chamada fica em "input-available" até o cliente responder. É esse estado que
+ * procuramos aqui.
+ */
+function encontrarPerguntaPendente(messages: readonly unknown[]): PerguntaDaIa | null {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i] as { role: string; parts: { type: string }[] };
+    if (message.role !== "assistant") continue;
+
+    for (const part of message.parts) {
+      if (part.type !== "tool-ask_user") continue;
+
+      const chamada = part as unknown as {
+        toolCallId: string;
+        state: string;
+        input?: PerguntaDaIa["input"];
+      };
+
+      if (chamada.state === "input-available" && chamada.input?.options) {
+        return { toolCallId: chamada.toolCallId, input: chamada.input };
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Popup sobre o campo do chat.
+ *
+ * Fica acima do input, e não no meio da conversa, porque é ali que a pessoa
+ * está olhando quando espera responder — e porque o stream está parado até ela
+ * responder, então a pergunta não pode passar despercebida.
+ */
+function PopupDePergunta({
+  pergunta,
+  onResponder,
+}: {
+  pergunta: PerguntaDaIa["input"];
+  onResponder: (resposta: string) => void;
+}) {
+  const [texto, setTexto] = useState("");
+  const permiteTexto = pergunta.allowFreeText !== false;
+
+  return (
+    <div className="absolute right-2.5 bottom-full left-2.5 z-10 mb-2 rounded-xl border border-app-primary/60 bg-app-surface p-3 shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
+      <p className="mb-2.5 text-sm leading-snug">{pergunta.question}</p>
+
+      <div className="flex flex-wrap gap-1.5">
+        {pergunta.options.map((opcao) => (
+          <button
+            key={opcao}
+            type="button"
+            onClick={() => onResponder(opcao)}
+            className="rounded-full border border-app-border bg-app-surface-2 px-3 py-1.5 text-xs transition-colors hover:border-app-primary hover:text-app-text"
+          >
+            {opcao}
+          </button>
+        ))}
+      </div>
+
+      {permiteTexto && (
+        <div className="mt-2 flex gap-1.5">
+          <input
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && texto.trim()) onResponder(texto.trim());
+            }}
+            placeholder="ou escreva sua resposta"
+            aria-label="Resposta para o copiloto"
+            className="h-8 flex-1 rounded-lg border border-app-border bg-app-surface-2 px-2.5 text-xs outline-none placeholder:text-app-muted focus:border-app-primary"
+          />
+          <button
+            type="button"
+            disabled={!texto.trim()}
+            onClick={() => onResponder(texto.trim())}
+            className="rounded-lg bg-app-primary px-3 text-xs text-white disabled:opacity-30"
+          >
+            Enviar
+          </button>
+        </div>
+      )}
+
+      {/* Sem esta saída, ignorar a pergunta deixaria o stream parado para sempre. */}
+      <button
+        type="button"
+        onClick={() => onResponder("Siga com o que você achar melhor.")}
+        className="mt-2 text-xs text-app-muted underline underline-offset-2 hover:text-app-text"
+      >
+        Decida por mim
+      </button>
     </div>
   );
 }
@@ -271,5 +391,8 @@ const RÓTULOS_DE_FERRAMENTA: Record<string, string> = {
   remove_block: "Removendo bloco",
   move_block: "Movendo bloco",
   set_step_logic: "Definindo lógica",
+  branch_by_answer: "Ramificando por resposta",
+  check_funnel: "Conferindo o funil",
+  ask_user: "Aguardando sua resposta",
   set_theme: "Ajustando o tema",
 };
