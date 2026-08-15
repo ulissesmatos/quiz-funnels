@@ -12,15 +12,16 @@ import {
 } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { Blocks, Layers, SlidersHorizontal } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { createBlock } from "@/funnel/ops";
 import { getBlockDefinition } from "@/funnel/schema/block";
 import type { FunnelDocument } from "@/funnel/schema";
 import { cn } from "@/lib/cn";
 
+import { AI_KICKOFF_STORAGE_KEY, type AiPrefill } from "./ai-kickoff";
 import { Canvas } from "./canvas";
-import { EditorProvider, useEditorShortcuts, useEditorStore } from "./editor-context";
+import { EditorProvider, useEditor, useEditorShortcuts, useEditorStore } from "./editor-context";
 import { FlowCanvas } from "./flow/flow-canvas";
 import { Inspector, type Aba as AbaInspector } from "./inspector";
 import { Palette, PALETTE_PREFIX } from "./palette";
@@ -53,8 +54,38 @@ function EditorLayout({ funnelId }: { funnelId: string }) {
   const [arrastando, setArrastando] = useState<string | null>(null);
   const [vista, setVista] = useState<Vista>("construtor");
   const [abaEsquerda, setAbaEsquerda] = useState<"telas" | "elementos">("telas");
+  const [aiPrefill, setAiPrefill] = useState<AiPrefill | null>(null);
+  const selectedBlockId = useEditor((s) => s.selectedBlockId);
 
   const fecharGaveta = () => setPainelMobile("canvas");
+
+  // Selecionar um bloco sem ver as propriedades dele é um passo extra sem
+  // motivo — troca pra aba certa sozinho, de qualquer lugar que selecione um
+  // bloco (canvas, paleta, IA).
+  useEffect(() => {
+    if (!selectedBlockId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza com o bloco selecionado no store
+    setAbaInspector("bloco");
+  }, [selectedBlockId]);
+
+  // Pedido de IA feito no modal de criação do funil: já cai aqui pedindo pro
+  // copiloto rodar sozinho, sem a pessoa ter que digitar de novo.
+  useEffect(() => {
+    const pedido = window.sessionStorage.getItem(AI_KICKOFF_STORAGE_KEY);
+    if (!pedido) return;
+
+    window.sessionStorage.removeItem(AI_KICKOFF_STORAGE_KEY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- leitura única de estado externo (sessionStorage)
+    setAbaInspector("ia");
+    setAiPrefill({ texto: pedido, autoEnviar: true });
+  }, []);
+
+  /** Atalho "Personalizar com IA" de um card do fluxo: leva direto pro chat. */
+  function pedirIaComContexto(texto: string) {
+    setAbaInspector("ia");
+    setAiPrefill({ texto, autoEnviar: false });
+    setPainelMobile("ajustes");
+  }
 
   /**
    * `distance`/`delay` evitam que um toque para selecionar vire um arrasto
@@ -99,7 +130,6 @@ function EditorLayout({ funnelId }: { funnelId: string }) {
         { label: `Adicionar ${getBlockDefinition(tipo)?.label ?? "bloco"}` },
       );
       estado.selectBlock(bloco.id);
-      setAbaInspector("bloco");
       return;
     }
 
@@ -180,12 +210,18 @@ function EditorLayout({ funnelId }: { funnelId: string }) {
                   store.getState().selectStep(stepId);
                   setVista("construtor");
                 }}
+                onPedirIa={pedirIaComContexto}
               />
             )}
           </main>
 
           <PainelLateral lado="direita" aberto={painelMobile === "ajustes"} onFechar={fecharGaveta}>
-            <Inspector aba={abaInspector} onAbaChange={setAbaInspector} />
+            <Inspector
+              aba={abaInspector}
+              onAbaChange={setAbaInspector}
+              aiPrefill={aiPrefill}
+              onAiPrefillConsumed={() => setAiPrefill(null)}
+            />
           </PainelLateral>
         </div>
 

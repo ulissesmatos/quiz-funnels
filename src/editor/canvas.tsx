@@ -5,8 +5,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { Copy, EyeOff, GripVertical, Trash2 } from "lucide-react";
 import { useMemo, type CSSProperties } from "react";
 
+import { evaluateCondition } from "@/funnel/logic/conditions";
 import { BlockView } from "@/funnel/render/block-view";
-import { FunnelRuntimeProvider, type FunnelRuntime } from "@/funnel/render/runtime-context";
+import { FunnelRuntimeProvider, useFunnelRuntime, type FunnelRuntime } from "@/funnel/render/runtime-context";
 import { createContext as createFunnelContext } from "@/funnel/logic/context";
 import { computeScores } from "@/funnel/logic/scoring";
 import type { Block } from "@/funnel/schema/block";
@@ -157,6 +158,7 @@ function CanvasBlock({
   const doc = useDocument();
   const selectBlock = useEditor((s) => s.selectBlock);
   const dispatch = useEditor((s) => s.dispatch);
+  const { context } = useFunnelRuntime();
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: block.id,
@@ -173,6 +175,11 @@ function CanvasBlock({
   const definition = getBlockDefinition(block.type);
   const vazio = definition?.emptyState?.(block.props as never) ?? null;
 
+  // Com as respostas de exemplo do canvas (não uma resposta real), só serve
+  // de indicação — mas evita que o bloco condicional pareça ter sumido: em vez
+  // de desenhar nada, mostra o próprio conteúdo apagado com o aviso do porquê.
+  const condicaoAtendida = evaluateCondition(block.visibleIf, context);
+
   return (
     <div
       ref={setNodeRef}
@@ -182,6 +189,7 @@ function CanvasBlock({
         selected && "ed-block--selected",
         highlighted && "ed-block--highlighted",
         isDragging && "ed-block--dragging",
+        !condicaoAtendida && "ed-block--condicao-oculta",
       )}
       data-block-id={block.id}
       onClick={(event) => {
@@ -190,11 +198,19 @@ function CanvasBlock({
       }}
     >
       {/* Sem este selo, um bloco com condição parece ter sumido sem motivo —
-          ele só não aparece para quem não bate a condição. */}
+          ele só não aparece para quem não bate a condição. Continua desenhado
+          por baixo, apagado, para dar pra editar mesmo assim. */}
       {block.visibleIf && (
-        <span className="ed-block-flag" title="Só aparece quando a condição for verdadeira">
+        <span
+          className={cn("ed-block-flag", !condicaoAtendida && "ed-block-flag--oculto")}
+          title={
+            condicaoAtendida
+              ? "Este bloco só aparece quando a condição for verdadeira — no exemplo atual, ela bate"
+              : "Este bloco só aparece quando a condição for verdadeira — no exemplo atual, ela não bate, então ficaria oculto"
+          }
+        >
           <EyeOff size={11} />
-          Condicional
+          {condicaoAtendida ? "Condicional" : "Condicional · oculto no exemplo"}
         </span>
       )}
 

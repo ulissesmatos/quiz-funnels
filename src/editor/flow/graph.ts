@@ -23,8 +23,12 @@ export type StepNodeData = {
   /** Pergunta ou título principal da tela, para dar contexto no card. */
   resumo: string;
   problemas: FunnelIssue[];
+  /** Quantos blocos desta tela só aparecem sob condição. */
+  condicionaisCount: number;
   /** Leva para o Construtor nesta tela. Injetado pelo canvas. */
   onAbrir: (stepId: string) => void;
+  /** Leva para o copiloto com esta tela como contexto. Injetado pelo canvas. */
+  onFocarIa?: (stepId: string) => void;
   [key: string]: unknown;
 };
 
@@ -35,8 +39,20 @@ export type FlowEdgeData = {
   /** Presente quando a aresta veio de uma regra, para permitir editar/remover. */
   ruleId?: string;
   fromStepId: string;
+  /** Cor determinística do card de origem, só em arestas de regra — deixa
+   *  claro quais setas saem do mesmo card num mapa cheio de ramificação. */
+  cor?: string;
   [key: string]: unknown;
 };
+
+const CORES_DE_ORIGEM = 5;
+
+/** Cor determinística por tela de origem, para diferenciar ramos no mapa. */
+export function corDeOrigem(stepId: string): string {
+  let hash = 0;
+  for (let i = 0; i < stepId.length; i++) hash = (hash * 31 + stepId.charCodeAt(i)) >>> 0;
+  return `var(--fl-origem-${(hash % CORES_DE_ORIGEM) + 1})`;
+}
 
 export type FlowGraph = {
   nodes: {
@@ -57,6 +73,7 @@ export type FlowGraph = {
 export function buildGraph(
   doc: FunnelDocument,
   onAbrir: (stepId: string) => void = () => {},
+  onFocarIa?: (stepId: string) => void,
 ): FlowGraph {
   const problemas = lintFunnel(doc);
   const idsExistentes = new Set(doc.steps.map((s) => s.id));
@@ -70,7 +87,9 @@ export function buildGraph(
       index,
       resumo: resumirStep(step),
       problemas: problemas.filter((p) => p.stepId === step.id),
+      condicionaisCount: contarBlocosCondicionais(step),
       onAbrir,
+      onFocarIa,
     },
   }));
 
@@ -86,7 +105,7 @@ export function buildGraph(
         source: step.id,
         target: rule.goto,
         label: descreverCondicao(rule.when, doc),
-        data: { kind: "regra", ruleId: rule.id, fromStepId: step.id },
+        data: { kind: "regra", ruleId: rule.id, fromStepId: step.id, cor: corDeOrigem(step.id) },
       });
     }
 
@@ -163,6 +182,14 @@ function rotuloDoBloco(block: Block): string {
   if (block.type === "button") return block.props.label;
   if (block.type === "pricing") return block.props.actionLabel;
   return "ao terminar";
+}
+
+function contarBlocosCondicionais(step: Step): number {
+  let contagem = 0;
+  for (const block of walkBlocks(step.blocks)) {
+    if (block.visibleIf) contagem++;
+  }
+  return contagem;
 }
 
 function resumirStep(step: Step): string {

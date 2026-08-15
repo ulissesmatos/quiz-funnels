@@ -37,9 +37,14 @@ import { blockAnimationVars, blockStyleVars, splitResponsive } from "./style";
  * compilação no `assertNever` — o registro e o renderer não saem de sincronia.
  */
 export function BlockView({ block, theme }: { block: Block; theme: Theme }) {
-  const { context } = useFunnelRuntime();
+  const { context, mode } = useFunnelRuntime();
+  const visivel = evaluateCondition(block.visibleIf, context);
 
-  if (!evaluateCondition(block.visibleIf, context)) return null;
+  // No editor o bloco continua desenhado mesmo quando a condição não bate —
+  // sumir sem deixar rastro faz parecer que o bloco foi perdido. Quem decide
+  // se aparece de verdade é o `CanvasBlock`, que mostra o aviso e o estado
+  // apagado; aqui só o funil publicado respeita a condição de verdade.
+  if (!visivel && mode !== "editor") return null;
 
   const style: CSSProperties = {
     ...blockStyleVars(block.style),
@@ -53,6 +58,7 @@ export function BlockView({ block, theme }: { block: Block; theme: Theme }) {
       className={animated ? "fn-block fn-anim" : "fn-block"}
       data-preset={animated ? block.animation?.preset : undefined}
       data-block-id={block.id}
+      data-condicao-atendida={block.visibleIf ? String(visivel) : undefined}
       style={style}
     >
       <BlockContent block={block} theme={theme} />

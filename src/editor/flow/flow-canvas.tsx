@@ -15,14 +15,17 @@ import {
   type NodeChange,
   type NodeMouseHandler,
 } from "@xyflow/react";
-import { AlertCircle, LayoutGrid, Split, Wand2 } from "lucide-react";
+import { AlertCircle, HelpCircle, LayoutGrid, ListTree, Split, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { lintFunnel } from "@/funnel/logic/lint";
 import { walkBlocks } from "@/funnel/schema/block";
 import type { Condition } from "@/funnel/schema/common";
+import { cn } from "@/lib/cn";
 
 import { useDocument, useEditor, useEditorStore } from "../editor-context";
+import { FieldsPanel } from "./fields-panel";
+import { FlowLegend } from "./flow-legend";
 import { autoLayout, buildGraph, stepsSemPosicao, type FlowEdgeData, type StepNodeData } from "./graph";
 import { RuleEditor } from "./rule-editor";
 import { StepNode } from "./step-node";
@@ -31,6 +34,7 @@ import "@xyflow/react/dist/style.css";
 import "./flow.css";
 
 const nodeTypes = { step: StepNode };
+const CHAVE_LEGENDA_FECHADA = "fl-legenda-fechada";
 
 /** Ramificação em edição: nova (sem ruleId) ou existente. */
 type EdicaoDeRegra = {
@@ -40,15 +44,27 @@ type EdicaoDeRegra = {
   condicao?: Condition;
 };
 
-export function FlowCanvas({ onAbrirTela }: { onAbrirTela: (stepId: string) => void }) {
+export function FlowCanvas({
+  onAbrirTela,
+  onPedirIa,
+}: {
+  onAbrirTela: (stepId: string) => void;
+  onPedirIa?: (texto: string) => void;
+}) {
   return (
     <ReactFlowProvider>
-      <FlowInterno onAbrirTela={onAbrirTela} />
+      <FlowInterno onAbrirTela={onAbrirTela} onPedirIa={onPedirIa} />
     </ReactFlowProvider>
   );
 }
 
-function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void }) {
+function FlowInterno({
+  onAbrirTela,
+  onPedirIa,
+}: {
+  onAbrirTela: (stepId: string) => void;
+  onPedirIa?: (texto: string) => void;
+}) {
   const doc = useDocument();
   const store = useEditorStore();
   const dispatch = useEditor((s) => s.dispatch);
@@ -57,9 +73,54 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
 
   const { fitView } = useReactFlow();
   const [edicao, setEdicao] = useState<EdicaoDeRegra | null>(null);
+  // Legenda e painel de campos dividem o mesmo canto — só um por vez, senão
+  // um cobre o outro.
+  const [painelAberto, setPainelAberto] = useState<"legenda" | "campos" | null>("legenda");
 
-  const grafo = useMemo(() => buildGraph(doc, onAbrirTela), [doc, onAbrirTela]);
+  // Só por clique, não por hover: destacar ao passar o mouse parecia bug em
+  // mapas densos — mover o cursor entre cards próximos troca o card em foco a
+  // cada pixel, e todo o resto do mapa pisca opacidade a cada troca.
+  const [focoId, setFocoId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fechada = window.localStorage.getItem(CHAVE_LEGENDA_FECHADA);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- leitura única de estado externo (localStorage)
+    if (fechada === "1") setPainelAberto(null);
+  }, []);
+
+  const onFocarIa = useCallback(
+    (stepId: string) => {
+      if (!onPedirIa) return;
+      const step = doc.steps.find((s) => s.id === stepId);
+      if (!step) return;
+      onPedirIa(`Personalize a tela "${step.name}" pelas respostas do usuário.`);
+    },
+    [doc, onPedirIa],
+  );
+
+  const grafo = useMemo(
+    () => buildGraph(doc, onAbrirTela, onFocarIa),
+    [doc, onAbrirTela, onFocarIa],
+  );
   const problemas = useMemo(() => lintFunnel(doc), [doc]);
+
+  /** Tudo que está diretamente ligado ao card em foco — o resto do mapa esmaece. */
+  const conectados = useMemo(() => {
+    if (!focoId) return null;
+
+    const nodeIds = new Set([focoId]);
+    const edgeIds = new Set<string>();
+
+    for (const edge of grafo.edges) {
+      if (edge.source === focoId || edge.target === focoId) {
+        edgeIds.add(edge.id);
+        nodeIds.add(edge.source);
+        nodeIds.add(edge.target);
+      }
+    }
+
+    return { nodeIds, edgeIds };
+  }, [focoId, grafo.edges]);
 
   /**
    * Telas sem posição — recém-criadas, ou vindas da IA — recebem layout
@@ -89,8 +150,9 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
         ...node,
         selected: node.id === selectedStepId,
         draggable: true,
+        className: conectados && !conectados.nodeIds.has(node.id) ? "fl-node-wrap--dim" : undefined,
       })),
-    [grafo.nodes, selectedStepId],
+    [grafo.nodes, selectedStepId, conectados],
   );
 
   const edges: Edge[] = useMemo(
@@ -99,10 +161,19 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
         ...edge,
         type: "smoothstep",
         animated: edge.data.kind === "regra",
-        className: `fl-edge fl-edge--${edge.data.kind}`,
-        markerEnd: { type: "arrowclosed" as const, width: 16, height: 16 },
+        className: cn(
+          `fl-edge fl-edge--${edge.data.kind}`,
+          conectados && !conectados.edgeIds.has(edge.id) && "fl-edge--dim",
+        ),
+        style: edge.data.cor ? { stroke: edge.data.cor } : undefined,
+        markerEnd: {
+          type: "arrowclosed" as const,
+          width: 16,
+          height: 16,
+          ...(edge.data.cor ? { color: edge.data.cor } : {}),
+        },
       })),
-    [grafo.edges],
+    [grafo.edges, conectados],
   );
 
   const onNodesChange = useCallback(
@@ -146,7 +217,10 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
   }, [store]);
 
   const onNodeClick: NodeMouseHandler = useCallback(
-    (_evento, node) => selectStep(node.id),
+    (_evento, node) => {
+      selectStep(node.id);
+      setFocoId((atual) => (atual === node.id ? null : node.id));
+    },
     [selectStep],
   );
 
@@ -154,6 +228,20 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
     (_evento, node) => onAbrirTela(node.id),
     [onAbrirTela],
   );
+
+  const onPaneClick = useCallback(() => setFocoId(null), []);
+
+  const alternarLegenda = useCallback(() => {
+    setPainelAberto((atual) => {
+      const abrindo = atual !== "legenda";
+      window.localStorage.setItem(CHAVE_LEGENDA_FECHADA, abrindo ? "0" : "1");
+      return abrindo ? "legenda" : null;
+    });
+  }, []);
+
+  const alternarCampos = useCallback(() => {
+    setPainelAberto((atual) => (atual === "campos" ? null : "campos"));
+  }, []);
 
   /** Recalcula a posição de todas as telas — o "arrumar a mesa" do mapa. */
   const reorganizar = useCallback(() => {
@@ -214,6 +302,7 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
         onEdgeClick={onEdgeClick}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
+        onPaneClick={onPaneClick}
         fitView
         /**
          * O piso de zoom é o que importa aqui. Um funil de 12 telas em linha
@@ -232,7 +321,15 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
         <MiniMap pannable zoomable className="fl-minimap" />
       </ReactFlow>
 
-      <BarraDeAcoes onRamificar={() => setEdicao(null)} onReorganizar={reorganizar} />
+      <BarraDeAcoes
+        onRamificar={() => setEdicao(null)}
+        onReorganizar={reorganizar}
+        onAlternarLegenda={alternarLegenda}
+        onAlternarCampos={alternarCampos}
+      />
+
+      <FlowLegend aberta={painelAberto === "legenda"} onFechar={() => setPainelAberto(null)} />
+      <FieldsPanel aberto={painelAberto === "campos"} onFechar={() => setPainelAberto(null)} />
 
       {erros.length > 0 && (
         <div className="fl-alertas" role="status">
@@ -280,9 +377,13 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
 function BarraDeAcoes({
   onRamificar,
   onReorganizar,
+  onAlternarLegenda,
+  onAlternarCampos,
 }: {
   onRamificar: () => void;
   onReorganizar: () => void;
+  onAlternarLegenda: () => void;
+  onAlternarCampos: () => void;
 }) {
   const doc = useDocument();
   const store = useEditorStore();
@@ -354,6 +455,15 @@ function BarraDeAcoes({
       <button type="button" className="fl-acao" onClick={onReorganizar}>
         <LayoutGrid size={14} />
         Reorganizar
+      </button>
+
+      <button type="button" className="fl-acao" onClick={onAlternarCampos}>
+        <ListTree size={14} />
+        Campos
+      </button>
+
+      <button type="button" className="fl-acao" aria-label="Legenda do mapa" onClick={onAlternarLegenda}>
+        <HelpCircle size={14} />
       </button>
     </div>
   );

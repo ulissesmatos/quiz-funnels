@@ -5,6 +5,18 @@
   flex: 1;
   min-height: 0;
   background: var(--color-app-bg);
+
+  /* Cor por card de origem: cada tela com regra pega um destes 5 tons, para
+     as setas que saem dela se destacarem das de outros cards num mapa cheio
+     de ramificação. Escolhidos para contraste no fundo escuro fixo do editor
+     (não há tema claro aqui) e para não colidir com --color-app-primary
+     (seleção/handles), --color-app-success (aresta de botão) nem
+     --color-app-danger (erros de lint). */
+  --fl-origem-1: #3987e5;
+  --fl-origem-2: #d97706;
+  --fl-origem-3: #14b881;
+  --fl-origem-4: #e0b400;
+  --fl-origem-5: #e0568c;
 }
 
 .fl-wrap .react-flow__background { color: var(--color-app-border); }
@@ -105,6 +117,9 @@
   color: var(--color-app-danger);
 }
 
+.fl-node-tag--ramo { background: color-mix(in oklab, currentcolor 18%, var(--color-app-surface-2)); }
+.fl-node-tag--sutil { background: transparent; border: 1px dashed var(--color-app-border); }
+
 .fl-node-abrir {
   flex-shrink: 0;
   display: grid;
@@ -161,6 +176,13 @@
 }
 
 .fl-wrap .react-flow__edge-textbg { fill: var(--color-app-bg); }
+
+/* Foco num card: o resto do mapa esmaece para deixar claro só o que está
+   ligado a ele — essencial num funil com várias ramificações espalhadas. */
+.react-flow__node.fl-node-wrap--dim { opacity: 0.35; transition: opacity 120ms ease; }
+.fl-edge--dim .react-flow__edge-path { opacity: 0.18; }
+.fl-edge--dim .react-flow__edge-text,
+.fl-edge--dim .react-flow__edge-textbg { opacity: 0.25; }
 
 /* ── Barra de ações e avisos ──────────────────────────────── */
 
@@ -231,7 +253,12 @@
   border: 1px solid var(--color-app-border);
   box-shadow: 0 20px 50px rgb(0 0 0 / 0.45);
   font-family: var(--font-sans);
+  transition: max-width 120ms ease;
 }
+
+/* Duas ou mais condições precisam de espaço para os três selects lado a lado
+   mais o botão de remover — no popover estreito eles quebrariam linha. */
+.fl-popover--largo { max-width: 420px; }
 
 .fl-popover-titulo { margin: 0; font-size: 13px; color: var(--color-app-muted); }
 .fl-popover-titulo strong { color: var(--color-app-text); }
@@ -259,4 +286,117 @@
 .fl-popover-remover:hover {
   background: color-mix(in oklab, var(--color-app-danger) 20%, transparent);
   color: var(--color-app-danger);
+}
+
+/* ── Legenda e painel de campos ───────────────────────────── */
+
+.fl-paineleto {
+  position: absolute;
+  top: 56px;
+  left: 12px;
+  z-index: 5;
+  width: 260px;
+  max-height: calc(100% - 76px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--color-app-surface);
+  border: 1px solid var(--color-app-border);
+  box-shadow: 0 12px 34px rgb(0 0 0 / 0.4);
+  font-family: var(--font-sans);
+  overflow-y: auto;
+}
+
+.fl-paineleto-cabecalho {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-app-text);
+}
+
+.fl-paineleto-fechar {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-app-muted);
+  cursor: pointer;
+}
+
+.fl-paineleto-fechar:hover { background: var(--color-app-surface-2); color: var(--color-app-text); }
+
+.fl-legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--color-app-muted);
+}
+
+.fl-legenda-amostra {
+  flex-shrink: 0;
+  width: 22px;
+  height: 0;
+  border-top-width: 2px;
+  border-top-style: solid;
+}
+
+.fl-legenda-amostra--padrao { border-top-style: dashed; border-top-color: var(--color-app-border); }
+.fl-legenda-amostra--regra { border-top-color: var(--color-app-primary); }
+.fl-legenda-amostra--botao { border-top-color: var(--color-app-success); }
+
+.fl-campos-secao { display: flex; flex-direction: column; gap: 6px; }
+
+.fl-campos-secao-titulo {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-app-muted);
+}
+
+.fl-campo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--color-app-surface-2);
+}
+
+.fl-campo-item-topo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.fl-campo-item-topo code {
+  font-size: 11px;
+  color: var(--color-app-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fl-campo-item-tela {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--color-app-muted);
+}
+
+.fl-campo-item-opcoes {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--color-app-muted);
 }

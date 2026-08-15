@@ -1,0 +1,115 @@
+/**
+ * Editor visual de condição (E/OU), usado no editor de regra do fluxo e na
+ * visibilidade condicional de bloco. Tudo aqui é `cb-*`.
+ */
+
+.cb-builder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cb-vazio {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-app-muted);
+}
+
+.cb-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cb-row-controles {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.cb-match {
+  display: inline-flex;
+  align-self: flex-start;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--color-app-surface-2);
+}
+
+.cb-match-opcao {
+  padding: 2px 9px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-app-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cb-match-opcao.is-active {
+  background: var(--color-app-surface);
+  color: var(--color-app-primary);
+}
+
+.cb-remove {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-app-muted);
+  cursor: pointer;
+}
+
+.cb-remove:hover {
+  background: color-mix(in oklab, var(--color-app-danger) 20%, transparent);
+  color: var(--color-app-danger);
+}
+
+.cb-addrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  padding: 5px 9px;
+  border: 1px dashed var(--color-app-border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-app-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cb-addrow:hover {
+  border-color: var(--color-app-primary);
+  color: var(--color-app-text);
+}
+
+.cb-irrepresentavel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--color-app-surface-2);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--color-app-muted);
+}
+
+.cb-irrepresentavel-resumo {
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: var(--color-app-surface);
+  color: var(--color-app-text);
+  font-size: 11px;
+}

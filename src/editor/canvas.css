@@ -57,6 +57,16 @@
 .ed-block--selected { outline: 2px solid var(--color-app-primary); outline-offset: 4px; }
 .ed-block--dragging { opacity: 0.4; }
 
+/* Condição não bate no exemplo atual: o bloco continua desenhado (ver
+   `BlockView`, que só esconde de verdade no funil publicado), só que apagado
+   e com contorno tracejado — sumir por completo faz parecer bug, não regra. */
+.ed-block--condicao-oculta .ed-block-content {
+  opacity: 0.4;
+  outline: 1px dashed var(--color-app-border);
+  outline-offset: 6px;
+  border-radius: 8px;
+}
+
 /* Pulso curto quando a IA mexe no bloco — mostra onde a mudança aconteceu. */
 .ed-block--highlighted {
   outline: 2px solid var(--color-app-success);
@@ -110,6 +120,14 @@
   font-weight: 500;
   color: var(--color-app-bg);
   background: #eab308;
+}
+
+/* Diferente do selo padrão (condição existe): este avisa que, no exemplo
+   atual do canvas, ela não bate — é por isso que o bloco está apagado. */
+.ed-block-flag--oculto {
+  color: var(--color-app-muted);
+  background: var(--color-app-surface-2);
+  border: 1px solid var(--color-app-border);
 }
 
 .ed-block-label {

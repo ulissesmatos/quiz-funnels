@@ -1,14 +1,14 @@
 "use client";
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { AlertCircle, PencilLine, Split } from "lucide-react";
+import { AlertCircle, EyeOff, PencilLine, Sparkles, Split } from "lucide-react";
 
 import { Icon } from "@/components/ui/icon";
 import { walkBlocks } from "@/funnel/schema/block";
 import { stepTypeMeta } from "@/funnel/schema/step";
 import { cn } from "@/lib/cn";
 
-import type { StepNodeData } from "./graph";
+import { corDeOrigem, type StepNodeData } from "./graph";
 
 /**
  * Card de uma tela no mapa.
@@ -18,10 +18,11 @@ import type { StepNodeData } from "./graph";
  * lint encontrou nela.
  */
 export function StepNode({ data, selected }: NodeProps & { data: StepNodeData }) {
-  const { step, index, resumo, problemas } = data;
+  const { step, index, resumo, problemas, condicionaisCount } = data;
 
   const temErro = problemas.some((p) => p.severity === "erro");
-  const podeRamificar = temEscolha(step.blocks);
+  const ramificacoes = step.logic.rules.length;
+  const podeRamificar = ramificacoes === 0 && temEscolha(step.blocks);
 
   return (
     <div
@@ -35,8 +36,23 @@ export function StepNode({ data, selected }: NodeProps & { data: StepNodeData })
         <span className="fl-node-name">{step.name}</span>
         <span className="fl-node-index">{index + 1}</span>
 
-        {/* Botão explícito em vez de só duplo clique: o gesto escondido não se
-            descobre sozinho, e no celular não existe. */}
+        {/* Botões explícitos em vez de só duplo clique: o gesto escondido não
+            se descobre sozinho, e no celular não existe. */}
+        {data.onFocarIa && (
+          <button
+            type="button"
+            className="fl-node-abrir"
+            aria-label={`Personalizar "${step.name}" com o copiloto`}
+            title="Personalizar com IA"
+            onClick={(evento) => {
+              evento.stopPropagation();
+              data.onFocarIa!(step.id);
+            }}
+          >
+            <Sparkles size={12} />
+          </button>
+        )}
+
         <button
           type="button"
           className="fl-node-abrir"
@@ -58,10 +74,31 @@ export function StepNode({ data, selected }: NodeProps & { data: StepNodeData })
           {step.blocks.length} {step.blocks.length === 1 ? "bloco" : "blocos"}
         </span>
 
+        {ramificacoes > 0 && (
+          <span
+            className="fl-node-tag fl-node-tag--ramo"
+            style={{ color: corDeOrigem(step.id) }}
+            title="Quantos caminhos saem desta tela por regra"
+          >
+            <Split size={11} />
+            {ramificacoes === 1 ? "1 ramificação" : `${ramificacoes} ramificações`}
+          </span>
+        )}
+
         {podeRamificar && (
-          <span className="fl-node-tag" title="Esta tela tem uma pergunta e pode ramificar">
+          <span className="fl-node-tag fl-node-tag--sutil" title="Esta tela tem uma pergunta e pode ramificar">
             <Split size={11} />
             ramificável
+          </span>
+        )}
+
+        {condicionaisCount > 0 && (
+          <span
+            className="fl-node-tag"
+            title="Blocos que só aparecem sob condição"
+          >
+            <EyeOff size={11} />
+            {condicionaisCount === 1 ? "1 condicional" : `${condicionaisCount} condicionais`}
           </span>
         )}
 

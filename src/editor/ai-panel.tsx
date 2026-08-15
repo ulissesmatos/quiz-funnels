@@ -10,6 +10,7 @@ import type { AiToolName } from "@/funnel/ai/tools";
 import { cn } from "@/lib/cn";
 import { saveFunnelDocumentAction } from "@/server/funnels/actions";
 
+import type { AiPrefill } from "./ai-kickoff";
 import { useEditor, useEditorStore } from "./editor-context";
 
 const SUGESTOES = [
@@ -26,7 +27,13 @@ const SUGESTOES = [
  * funil vai se montando na frente de quem pediu, em vez de aparecer pronto
  * depois de meio minuto de espera.
  */
-export function AiPanel() {
+export function AiPanel({
+  prefill,
+  onPrefillConsumed,
+}: {
+  prefill?: AiPrefill | null;
+  onPrefillConsumed?: () => void;
+}) {
   const store = useEditorStore();
   const funnelId = useEditor((s) => s.funnelId);
   const [erroLocal, setErroLocal] = useState<string | null>(null);
@@ -35,6 +42,8 @@ export function AiPanel() {
   /** Chamadas já aplicadas, por `toolCallId`. */
   const aplicadas = useRef(new Set<string>());
   const fimDaLista = useRef<HTMLDivElement>(null);
+  /** Texto do último auto-envio disparado, pra não duplicar em StrictMode. */
+  const autoEnviado = useRef<string | null>(null);
 
   const { messages, sendMessage, status, error, stop, addToolResult } = useChat({
     transport: new DefaultChatTransport({ api: "/api/ai/chat", body: { funnelId } }),
@@ -102,8 +111,8 @@ export function AiPanel() {
     fimDaLista.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function enviar() {
-    const conteudo = texto.trim();
+  async function enviar(textoForcado?: string) {
+    const conteudo = (textoForcado ?? texto).trim();
     if (!conteudo || ocupado) return;
 
     setErroLocal(null);
@@ -120,6 +129,27 @@ export function AiPanel() {
 
     sendMessage({ text: conteudo });
   }
+
+  // Atalho "Personalizar com IA" do fluxo: só preenche o campo, e só se
+  // estiver vazio, pra não sobrescrever um rascunho em andamento. Pedido feito
+  // no modal de criação do funil: preenche e já dispara sozinho — é o que
+  // "começa a rodar a solicitação automaticamente" quer dizer.
+  useEffect(() => {
+    if (!prefill) return;
+
+    if (prefill.autoEnviar) {
+      if (autoEnviado.current === prefill.texto) return; // já disparado (StrictMode)
+      autoEnviado.current = prefill.texto;
+      onPrefillConsumed?.();
+      void enviar(prefill.texto);
+      return;
+    }
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza com um sinal externo (prop), não com outro estado local
+    setTexto((atual) => (atual.trim() ? atual : prefill.texto));
+    onPrefillConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

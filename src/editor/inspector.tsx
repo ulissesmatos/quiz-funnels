@@ -7,6 +7,8 @@ import { stepTypeMeta } from "@/funnel/schema/step";
 import { cn } from "@/lib/cn";
 
 import { AiPanel } from "./ai-panel";
+import type { AiPrefill } from "./ai-kickoff";
+import { BlockVisibilitySection } from "./block-visibility";
 import { useDocument, useEditor, useSelectedBlock, useSelectedStep } from "./editor-context";
 import { SchemaForm } from "./schema-form";
 import { ThemePanel } from "./theme-panel";
@@ -20,7 +22,17 @@ const ABAS: { chave: Aba; rotulo: string }[] = [
   { chave: "ia", rotulo: "IA" },
 ];
 
-export function Inspector({ aba, onAbaChange }: { aba: Aba; onAbaChange: (aba: Aba) => void }) {
+export function Inspector({
+  aba,
+  onAbaChange,
+  aiPrefill,
+  onAiPrefillConsumed,
+}: {
+  aba: Aba;
+  onAbaChange: (aba: Aba) => void;
+  aiPrefill?: AiPrefill | null;
+  onAiPrefillConsumed?: () => void;
+}) {
   const bloco = useSelectedBlock();
 
   return (
@@ -45,12 +57,15 @@ export function Inspector({ aba, onAbaChange }: { aba: Aba; onAbaChange: (aba: A
         ))}
       </div>
 
-      {/* O copiloto tem rolagem própria e ocupa a altura toda. */}
-      {aba === "ia" ? (
-        <div className="min-h-0 flex-1">
-          <AiPanel />
-        </div>
-      ) : (
+      {/* O copiloto tem rolagem própria e ocupa a altura toda. Fica sempre
+          montado (só escondido por CSS) para a conversa não se perder toda
+          vez que a pessoa troca de aba — o atalho "Personalizar com IA" do
+          fluxo perderia a graça se voltar sempre para um chat vazio. */}
+      <div className={cn("min-h-0 flex-1", aba !== "ia" && "hidden")}>
+        <AiPanel prefill={aiPrefill} onPrefillConsumed={onAiPrefillConsumed} />
+      </div>
+
+      {aba !== "ia" && (
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {aba === "bloco" && (bloco ? <PainelDoBloco /> : <Vazio />)}
           {aba === "tela" && <PainelDaTela />}
@@ -96,6 +111,8 @@ function PainelDoBloco() {
           )
         }
       />
+
+      <BlockVisibilitySection bloco={bloco} />
 
       <p className="border-t border-app-border pt-2 font-mono text-[10px] text-app-muted">
         id: {bloco.id}

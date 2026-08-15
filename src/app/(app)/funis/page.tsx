@@ -1,12 +1,12 @@
-import { ExternalLink, Plus } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/field";
 import { requireOrganization } from "@/server/auth/session";
 import { createFunnelAction } from "@/server/funnels/actions";
 import { listFunnels } from "@/server/funnels/queries";
+
+import { CreateFunnelDialog } from "./create-funnel-dialog";
 
 export const metadata: Metadata = { title: "Meus funis" };
 
@@ -26,19 +26,13 @@ export default async function FunisPage() {
           </p>
         </div>
 
-        <form action={createFunnelAction} className="flex gap-2">
-          <Input name="name" placeholder="Nome do novo funil" className="w-56" required />
-          <Button type="submit">
-            <Plus size={16} />
-            Criar
-          </Button>
-        </form>
+        <CreateFunnelDialog action={createFunnelAction} />
       </header>
 
       {items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-app-border px-6 py-16 text-center">
           <p className="text-app-muted">
-            Um funil começa com uma tela. Dê um nome acima e você cai direto no editor.
+            Um funil começa com uma tela. Toque em &ldquo;Criar funil&rdquo; acima pra começar.
           </p>
         </div>
       ) : (
