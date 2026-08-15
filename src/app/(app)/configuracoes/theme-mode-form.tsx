@@ -7,9 +7,13 @@ import { cn } from "@/lib/cn";
 import { updateDefaultThemeModeAction } from "@/server/settings/actions";
 
 const MODOS: { valor: ThemeMode; rotulo: string; dica: string }[] = [
-  { valor: "dark", rotulo: "Escuro", dica: "Funis novos nascem no modo escuro." },
-  { valor: "light", rotulo: "Claro", dica: "Funis novos nascem no modo claro." },
-  { valor: "auto", rotulo: "Automático", dica: "Funis novos seguem o sistema de quem visita." },
+  { valor: "dark", rotulo: "Escuro", dica: "Painel e editor no escuro. Funis novos também nascem nesse modo." },
+  { valor: "light", rotulo: "Claro", dica: "Painel e editor no claro. Funis novos também nascem nesse modo." },
+  {
+    valor: "auto",
+    rotulo: "Automático",
+    dica: "Painel e editor seguem o sistema deste computador. Funis novos também nascem assim.",
+  },
 ];
 
 export function ThemeModeForm({ inicial }: { inicial: ThemeMode }) {

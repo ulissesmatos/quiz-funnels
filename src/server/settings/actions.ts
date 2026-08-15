@@ -9,7 +9,11 @@ import { organizationSettings } from "@/server/db/schema";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-/** Padrão de modo (claro/escuro/automático) pra funil novo. Cada funil ainda pode trocar o seu depois. */
+/**
+ * Modo de cor (claro/escuro/automático) do painel e do editor desta
+ * organização. Também semeia o tema de todo funil novo — que pode trocar o
+ * seu depois, na aba Tema, sem afetar os outros nem esta preferência.
+ */
 export async function updateDefaultThemeModeAction(mode: ThemeMode): Promise<ActionResult> {
   const { organization } = await requireOrganization();
 

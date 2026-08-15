@@ -3,14 +3,19 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { requireOrganization } from "@/server/auth/session";
+import { getOrganizationSettings } from "@/server/settings/queries";
 
 import { SignOutButton } from "./_components/sign-out-button";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const { session, organization } = await requireOrganization();
+  const { defaultThemeMode } = await getOrganizationSettings();
 
   return (
-    <div className="flex min-h-dvh flex-col md:flex-row">
+    <div
+      data-app-theme={defaultThemeMode}
+      className="flex min-h-dvh flex-col bg-app-bg text-app-text md:flex-row"
+    >
       <aside className="flex shrink-0 items-center gap-4 border-b border-app-border bg-app-surface px-4 py-3 md:w-60 md:flex-col md:items-stretch md:gap-1 md:border-r md:border-b-0 md:px-3 md:py-4">
         <Link href="/funis" className="flex items-center gap-2 md:mb-4 md:px-2">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-app-primary text-sm font-bold text-white">

@@ -19,10 +19,11 @@ export default async function ConfiguracoesPage() {
       </header>
 
       <section className="rounded-2xl border border-app-border bg-app-surface p-5">
-        <h2 className="font-medium">Aparência dos funis</h2>
+        <h2 className="font-medium">Aparência do sistema</h2>
         <p className="mt-1 text-sm text-app-muted">
-          Modo padrão de cor para funis criados a partir de agora. Cada funil pode trocar o seu
-          individualmente na aba Tema do editor, sem afetar os outros.
+          Modo de cor do painel e do editor — a interface que você usa para montar os funis, não os
+          funis em si. Cada funil publicado tem o próprio tema, trocável na aba Tema do editor, e
+          nasce nesse mesmo modo por padrão até alguém trocar.
         </p>
         <div className="mt-4">
           <ThemeModeForm inicial={defaultThemeMode} />

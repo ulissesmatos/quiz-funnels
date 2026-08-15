@@ -13,7 +13,7 @@ import { computeScores } from "@/funnel/logic/scoring";
 import type { Block } from "@/funnel/schema/block";
 import { separarBlocosFixos } from "@/funnel/render/step-layout";
 import { getBlockDefinition } from "@/funnel/schema/block";
-import { resolveColor, resolveSpace, themeToCssVars } from "@/funnel/theme/css";
+import { customFontFaces, googleFontsHref, resolveColor, resolveSpace, themeToCssVars } from "@/funnel/theme/css";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 
@@ -81,8 +81,25 @@ export function Canvas() {
     paddingBlock: resolveSpace(step.layout.paddingY),
   };
 
+  const fontsHref = googleFontsHref(doc.theme);
+  const fontFaces = customFontFaces(doc.theme);
+
   return (
     <div className="ed-canvas-scroll" onClick={() => selectBlock(null)}>
+      {/*
+        Igual ao funil público: sem isto, trocar a fonte no painel Tema muda a
+        CSS variable mas o navegador nunca baixa a fonte escolhida, e o canvas
+        continua mostrando a fonte anterior sem nenhum aviso. O React 19 hoista
+        `<link>`/`<style>` para o `<head>` mesmo saindo de um client component.
+      */}
+      {fontsHref && (
+        <>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+          <link rel="stylesheet" href={fontsHref} />
+        </>
+      )}
+      {fontFaces && <style>{fontFaces}</style>}
       <div className={cn("ed-canvas-frame", `ed-canvas-frame--${viewport}`)}>
         <div className="fn-root" style={themeToCssVars(doc.theme)}>
           <FunnelRuntimeProvider value={runtime}>
