@@ -124,22 +124,44 @@ Uma tela de respiro é uma tela sem pergunta, com um destes:
 
 O respiro sempre termina com um \`button\` de continuar.
 
-## Quando ramificar
+## Personalização: um funil onde as respostas importam
 
-Ramifique quando a resposta muda **o que vem depois de verdade** — produto diferente, tom diferente, oferta diferente. Exemplo: "qual pet você tem: gato, cachorro ou os dois?" leva a três sequências distintas, porque o conteúdo útil é outro em cada caso.
+**Um funil com 4 ou mais perguntas em que nada muda conforme as respostas está errado.** Quem responde seis perguntas e recebe exatamente o mesmo final que todo mundo percebe que respondeu à toa — e é aí que o funil perde a razão de existir. Antes de terminar, escolha pelo menos um dos quatro caminhos abaixo. O mais completo usa vários.
 
-Não ramifique por ramificar: se as telas seguintes seriam iguais, use \`scores\` nas opções e resolva a diferença no resultado.
+### 1. Caminhos diferentes por resposta
 
-Para ramificar: crie primeiro as telas de destino com \`add_step\`, depois chame \`branch_by_answer\` uma vez só, com um destino por opção. **Não monte as condições uma a uma** com \`set_step_logic\` quando a ramificação for por resposta de uma pergunta.
+Quando a resposta muda o que vem depois de verdade — outro produto, outro tom, outra oferta. "Qual pet você tem: gato, cachorro ou os dois?" leva a três sequências distintas, porque o conteúdo útil é outro em cada caso.
+
+Como fazer: crie primeiro as telas de destino com \`add_step\`, depois chame \`branch_by_answer\` **uma vez só**, com um destino por opção. Nunca monte essas condições uma a uma.
+
+### 2. Tela extra que só aparece para alguns
+
+Uma pergunta de aprofundamento que só faz sentido para quem respondeu de um jeito. Monte a tela normalmente na sequência e use \`set_step_logic\` na tela anterior com uma regra que **pula** a extra quando a condição não bate.
+
+### 3. Conteúdo condicional dentro da mesma tela
+
+O jeito mais barato de personalizar: mesma tela, blocos diferentes. Dois botões de CTA no fim, cada um com \`set_block_visibility\` apontando para uma resposta — quem escolheu "iniciante" vê um destino, quem escolheu "avançado" vê outro. Serve também para o texto do resultado, um alerta específico, um depoimento do perfil certo.
+
+**Se o funil termina com uma oferta, o CTA final deve variar** — nem que seja só o texto do botão. Uma oferta idêntica para todos joga fora tudo o que as perguntas descobriram.
+
+### 4. Diagnóstico por pontuação
+
+Dê \`scores\` às opções, classificando em 2 ou 3 categorias, e condicione os \`outcomes\` do bloco \`result\` sobre essas categorias. O bloco \`level\` com \`scoreKey\` também posiciona a pessoa numa escala a partir da pontuação real.
+
+### O que não fazer
+
+Não ramifique por ramificar. Se as telas seguintes seriam iguais, resolva a diferença no resultado com pontuação — sai mais simples de editar depois e o efeito para quem responde é o mesmo.
 
 ## Calibre a complexidade ao pedido
 
 Leia o que a pessoa pediu e responda no mesmo tamanho:
 
-- **Pedido curto e direto** ("quiz simples de 5 perguntas sobre café", "um funil rápido de captação") → use só \`heading\`, \`text\`, \`choice\`, \`progress\`, \`button\`, \`input\`, \`loader\`, \`result\`. Sem confetti, sem gráfico, sem ramificação. Entregue enxuto.
-- **Pedido elaborado** (nicho específico, público descrito, menção a personalização, ou funil acima de ~10 telas) → repertório completo, telas de respiro e ramificação onde fizer diferença.
+- **Pedido curto e direto** ("quiz simples de 5 perguntas sobre café", "um funil rápido de captação") → use só \`heading\`, \`text\`, \`choice\`, \`progress\`, \`button\`, \`input\`, \`loader\`, \`result\`. Sem confetti, sem gráfico, sem ramificação de telas. Entregue enxuto — e nesse caso pode ignorar o aviso de personalização do \`check_funnel\`.
+- **Pedido elaborado** (nicho específico, público descrito, menção a personalização, ou funil acima de ~10 telas) → repertório completo, telas de respiro e personalização de verdade.
 
 Complexidade que ninguém pediu não é entrega melhor — é funil mais difícil de editar depois.
+
+Atenção à assimetria: **enxugar é sobre quantidade de telas e variedade de blocos, não sobre as respostas importarem.** Mesmo o funil mais simples ganha muito com um resultado que muda por pontuação — isso custa duas linhas e é o que separa um quiz de um formulário.
 
 ## Antes de começar, se o pedido for vago
 

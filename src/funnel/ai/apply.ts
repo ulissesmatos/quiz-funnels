@@ -50,23 +50,34 @@ export function aplicarChamadaDaIa(
       }
 
       case "update_step": {
-        const { stepId, name, type, align, fullHeight, isEnd } = entrada as {
+        const { stepId, name, type, align, fullHeight, isEnd, next } = entrada as {
           stepId: string;
           name?: string;
           type?: Step["type"];
           align?: "left" | "center";
           fullHeight?: boolean;
           isEnd?: boolean;
+          next?: string;
         };
 
         const step = doc.steps.find((s) => s.id === stepId);
         if (!step) return { ok: false, error: `A tela "${stepId}" não existe.` };
 
+        if (next !== undefined && !doc.steps.some((s) => s.id === next)) {
+          return { ok: false, error: `A tela de destino "${next}" não existe.` };
+        }
+
         const mudancas: StepPatch = {};
 
         if (name !== undefined) mudancas.name = name;
         if (type !== undefined) mudancas.type = type;
-        if (isEnd !== undefined) mudancas.logic = { ...step.logic, isEnd };
+        if (isEnd !== undefined || next !== undefined) {
+          mudancas.logic = {
+            ...step.logic,
+            ...(isEnd !== undefined ? { isEnd } : {}),
+            ...(next !== undefined ? { next } : {}),
+          };
+        }
         if (align !== undefined || fullHeight !== undefined) {
           mudancas.layout = {
             ...step.layout,
@@ -252,6 +263,26 @@ export function aplicarChamadaDaIa(
           { type: "branch_by_answer", stepId, blockId: escolha.id, branches, replace },
           `Ramificação criada em "${step.name}" com ${branches.length} caminhos`,
           [escolha.id],
+        );
+      }
+
+      case "set_block_visibility": {
+        const { blockId, when } = entrada as { blockId: string; when: AiCondition | null };
+
+        const encontrado = findBlock(doc, blockId);
+        if (!encontrado) return { ok: false, error: `O bloco "${blockId}" não existe.` };
+
+        return concluir(
+          doc,
+          {
+            type: "update_block",
+            blockId,
+            patch: { visibleIf: when ? converterCondicao(when) : null },
+          },
+          when
+            ? `Bloco ${blockId} agora só aparece sob condição`
+            : `Bloco ${blockId} voltou a aparecer sempre`,
+          [blockId],
         );
       }
 

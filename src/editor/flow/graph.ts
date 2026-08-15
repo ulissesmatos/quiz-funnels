@@ -104,19 +104,52 @@ export function buildGraph(
       });
     }
 
-    // Caminho padrão: a ordem da lista de telas.
-    const proximo = doc.steps[index + 1];
-    if (proximo && !step.logic.isEnd) {
+    // Caminho padrão: o destino fixo da tela, ou a ordem da lista. Some quando
+    // a ramificação cobre todas as opções — ali a seta é inalcançável, e
+    // desenhá-la deixaria um tronco morto atravessando a árvore.
+    const destinoPadrao = step.logic.next ?? doc.steps[index + 1]?.id;
+
+    if (destinoPadrao && idsExistentes.has(destinoPadrao) && !step.logic.isEnd && !ramificacaoExaustiva(step)) {
       edges.push({
         id: `padrao:${step.id}`,
         source: step.id,
-        target: proximo.id,
+        target: destinoPadrao,
         data: { kind: "padrao", fromStepId: step.id },
       });
     }
   });
 
   return { nodes, edges };
+}
+
+/**
+ * As regras da tela cobrem todas as opções da pergunta?
+ *
+ * Se cobrem, nenhuma resposta chega ao caminho padrão. Desenhar aquela seta
+ * mesmo assim faria a árvore parecer ter um tronco que na prática está morto —
+ * e é justamente esse tronco que impede a ramificação de ficar visível.
+ */
+function ramificacaoExaustiva(step: Step): boolean {
+  if (step.logic.rules.length === 0) return false;
+
+  const escolha = [...walkBlocks(step.blocks)].find((b) => b.type === "choice");
+  if (!escolha || escolha.type !== "choice") return false;
+  // Múltipla escolha combina respostas; não dá para afirmar cobertura total.
+  if (escolha.props.multiple) return false;
+
+  const cobertas = new Set<string>();
+
+  for (const rule of step.logic.rules) {
+    if (rule.when.kind !== "leaf") continue;
+    if (rule.when.ref.source !== "answer" || rule.when.ref.key !== escolha.props.name) continue;
+    if (rule.when.op !== "eq") continue;
+
+    const valor = rule.when.value;
+    if (Array.isArray(valor)) valor.forEach((v) => cobertas.add(String(v)));
+    else if (valor !== undefined) cobertas.add(String(valor));
+  }
+
+  return escolha.props.options.every((opcao) => cobertas.has(opcao.id));
 }
 
 function destinoDoBloco(block: Block): string | null {
@@ -258,7 +291,9 @@ export function autoLayout(graph: FlowGraph): Record<string, { x: number; y: num
   // Esquerda para a direita: o caminho principal de um funil é uma sequência
   // longa, e empilhada na vertical ela obriga a diminuir o zoom até os cards
   // ficarem ilegíveis. Na horizontal, as ramificações descem em paralelo.
-  g.setGraph({ rankdir: "LR", nodesep: 36, ranksep: 90, marginx: 24, marginy: 24 });
+  // `ranksep` largo porque o rótulo da condição vive no meio da aresta: apertado,
+  // ele fica por baixo do nó de destino e a ramificação deixa de se explicar.
+  g.setGraph({ rankdir: "LR", nodesep: 40, ranksep: 170, marginx: 32, marginy: 32 });
   g.setDefaultEdgeLabel(() => ({}));
 
   for (const node of graph.nodes) {

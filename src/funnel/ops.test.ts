@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { resolveNextStepId } from "./logic/routing";
 import { applyOp, applyOps, createBlock, createStep, findBlock } from "./ops";
 import { parseFunnelDocument } from "./schema";
 import { metabolismoTemplate } from "./templates/metabolismo";
@@ -141,6 +142,47 @@ describe("operações de edição", () => {
     if (encontrado?.block.type === "container") {
       expect(encontrado.block.props.children).toHaveLength(0);
     }
+  });
+
+  it("um ramo com destino fixo não escorrega para o ramo seguinte", () => {
+    // Reproduz a forma que a ramificação monta: duas telas de caminho, uma
+    // depois da outra na lista, convergindo para a mesma tela adiante.
+    const ramoA = { ...createStep(base, "content", "Ramo A"), logic: { rules: [], next: "step_nome" } };
+    const ramoB = { ...createStep(base, "content", "Ramo B"), logic: { rules: [], next: "step_nome" } };
+
+    let doc = applyOp(base, { type: "add_step", step: ramoA, afterStepId: "step_objetivo" });
+    doc = applyOp(doc, { type: "add_step", step: ramoB, afterStepId: ramoA.id });
+
+    const contexto = {
+      answers: {},
+      scores: { total: 0 },
+      variables: {},
+      stepIndex: 0,
+      stepCount: doc.steps.length,
+    };
+
+    // Sem `next`, sair do ramo A cairia no ramo B, que é da outra resposta.
+    expect(resolveNextStepId(doc, ramoA.id, contexto)).toBe("step_nome");
+    expect(resolveNextStepId(doc, ramoB.id, contexto)).toBe("step_nome");
+    expect(parseFunnelDocument(doc).success).toBe(true);
+  });
+
+  it("destino fixo apontando para tela inexistente cai no caminho padrão", () => {
+    const doc = applyOp(base, {
+      type: "update_step",
+      stepId: "step_inicio",
+      patch: { logic: { rules: [], next: "step_fantasma" } },
+    });
+
+    const contexto = {
+      answers: {},
+      scores: { total: 0 },
+      variables: {},
+      stepIndex: 0,
+      stepCount: doc.steps.length,
+    };
+
+    expect(resolveNextStepId(doc, "step_inicio", contexto)).toBe("step_objetivo");
   });
 
   it("operação com id inexistente não quebra nada", () => {

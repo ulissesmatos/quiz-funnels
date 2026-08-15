@@ -256,6 +256,47 @@ describe("ramificação por resposta", () => {
   });
 });
 
+describe("conteúdo condicional", () => {
+  it("torna um bloco condicional e depois volta atrás", () => {
+    const condicionado = aplicarChamadaDaIa(base, "set_block_visibility", {
+      blockId: "blk_botao_oferta",
+      when: {
+        match: "all",
+        rules: [{ source: "answer", key: "objetivo", op: "eq", value: "perder_peso" }],
+      },
+    });
+
+    expect(condicionado.ok, condicionado.ok ? "" : condicionado.error).toBe(true);
+    if (!condicionado.ok) return;
+
+    const bloco = findBlock(condicionado.doc, "blk_botao_oferta");
+    expect(bloco?.block.visibleIf).toEqual({
+      kind: "leaf",
+      ref: { source: "answer", key: "objetivo" },
+      op: "eq",
+      value: "perder_peso",
+    });
+    expect(parseFunnelDocument(condicionado.doc).success).toBe(true);
+
+    const revertido = aplicarChamadaDaIa(condicionado.doc, "set_block_visibility", {
+      blockId: "blk_botao_oferta",
+      when: null,
+    });
+
+    expect(revertido.ok).toBe(true);
+    if (revertido.ok) expect(findBlock(revertido.doc, "blk_botao_oferta")?.block.visibleIf).toBeUndefined();
+  });
+
+  it("recusa bloco inexistente", () => {
+    const resultado = aplicarChamadaDaIa(base, "set_block_visibility", {
+      blockId: "blk_fantasma",
+      when: null,
+    });
+
+    expect(resultado.ok).toBe(false);
+  });
+});
+
 describe("autoconferência", () => {
   it("check_funnel devolve o relatório sem alterar o documento", () => {
     const resultado = aplicarChamadaDaIa(base, "check_funnel", {});

@@ -24,7 +24,8 @@ export type FunnelIssue = {
     | "sem_captura"
     | "sem_cta"
     | "campo_duplicado"
-    | "tela_vazia";
+    | "tela_vazia"
+    | "sem_personalizacao";
   message: string;
   stepId?: string;
   blockId?: string;
@@ -32,6 +33,15 @@ export type FunnelIssue = {
 
 /** Quantas telas de pergunta seguidas antes de o funil cansar quem responde. */
 const MAX_PERGUNTAS_SEGUIDAS = 3;
+
+/**
+ * A partir de quantas perguntas um funil totalmente linear passa a ser suspeito.
+ *
+ * Um funil curto pode ser linear de propósito. Mas quem responde seis perguntas
+ * e recebe exatamente o mesmo final que todo mundo percebe que as respostas não
+ * serviram para nada — e o funil perde a razão de existir.
+ */
+const MIN_PERGUNTAS_PARA_EXIGIR_PERSONALIZACAO = 4;
 
 export function lintFunnel(doc: FunnelDocument): FunnelIssue[] {
   const issues: FunnelIssue[] = [];
@@ -175,7 +185,51 @@ export function lintFunnel(doc: FunnelDocument): FunnelIssue[] {
     });
   }
 
+  issues.push(...verificarPersonalizacao(doc));
+
   return issues;
+}
+
+/**
+ * O funil coleta respostas mas nada nele muda por causa delas?
+ *
+ * É o defeito mais caro de um quiz: a pessoa investe seis respostas e recebe
+ * exatamente o mesmo final que todo mundo. Quatro coisas contam como variação —
+ * basta uma.
+ */
+function verificarPersonalizacao(doc: FunnelDocument): FunnelIssue[] {
+  const perguntas = doc.steps.filter((s) => s.type === "question" && temEntrada(s.blocks)).length;
+  if (perguntas < MIN_PERGUNTAS_PARA_EXIGIR_PERSONALIZACAO) return [];
+
+  const temRoteamento = doc.steps.some((s) => s.logic.rules.length > 0);
+
+  let temBlocoCondicional = false;
+  let temResultadoComCondicao = false;
+  let temPontuacaoUsada = false;
+
+  for (const step of doc.steps) {
+    for (const block of walkBlocks(step.blocks)) {
+      if (block.visibleIf) temBlocoCondicional = true;
+
+      if (block.type === "result" && block.props.outcomes.some((o) => o.when)) {
+        temResultadoComCondicao = true;
+      }
+
+      if (block.type === "level" && block.props.scoreKey) temPontuacaoUsada = true;
+    }
+  }
+
+  if (temRoteamento || temBlocoCondicional || temResultadoComCondicao || temPontuacaoUsada) {
+    return [];
+  }
+
+  return [
+    {
+      severity: "aviso",
+      code: "sem_personalizacao",
+      message: `O funil faz ${perguntas} perguntas mas nada nele muda conforme as respostas: todo mundo vê as mesmas telas e o mesmo final. Escolha ao menos um caminho — ramifique uma pergunta com branch_by_answer, dê pontuação às opções e condicione os resultados, ou torne blocos condicionais com set_block_visibility.`,
+    },
+  ];
 }
 
 /** Todos os steps para onde é possível ir a partir deste. */
@@ -202,8 +256,8 @@ function destinosDe(doc: FunnelDocument, stepId: string): string[] {
 
   // O caminho padrão continua existindo a menos que o step encerre o funil.
   if (!step.logic.isEnd) {
-    const proximo = doc.steps[index + 1];
-    if (proximo) destinos.push(proximo.id);
+    const padrao = step.logic.next ?? doc.steps[index + 1]?.id;
+    if (padrao) destinos.push(padrao);
   }
 
   return destinos;

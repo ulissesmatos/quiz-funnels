@@ -60,6 +60,9 @@ export const aiToolSchemas = {
       align: z.enum(["left", "center"]).optional(),
       fullHeight: z.boolean().optional().describe("Centraliza o conteúdo verticalmente"),
       isEnd: z.boolean().optional().describe("Encerra o funil nesta tela"),
+      next: SlugId.optional().describe(
+        "Destino fixo ao sair, no lugar da próxima tela da lista. Use no fim de cada ramo para os caminhos voltarem a convergir.",
+      ),
     })
     .strict(),
 
@@ -127,6 +130,15 @@ export const aiToolSchemas = {
     })
     .strict(),
 
+  set_block_visibility: z
+    .object({
+      blockId: SlugId,
+      when: AiCondition.nullable().describe(
+        "Condição para o bloco aparecer. Passe null para o bloco voltar a aparecer sempre.",
+      ),
+    })
+    .strict(),
+
   check_funnel: z
     .object({})
     .strict()
@@ -180,6 +192,8 @@ export const aiToolDescriptions: Record<AiToolName, string> = {
     "Define para onde o visitante vai ao sair de uma tela, conforme respostas ou pontuação.",
   branch_by_answer:
     "Cria de uma vez um caminho por opção de uma pergunta. É a forma correta de ramificar: prefira esta ferramenta a montar as condições uma a uma.",
+  set_block_visibility:
+    "Faz um bloco aparecer só quando uma condição é verdadeira. É como se personaliza o conteúdo dentro de uma tela — dois CTAs diferentes, um texto que só quem respondeu X vê — sem precisar duplicar a tela inteira.",
   check_funnel:
     "Confere o funil e devolve os problemas encontrados: telas inalcançáveis, regras quebradas, perguntas demais em sequência, falta de captura. Chame ao terminar de montar.",
   ask_user:

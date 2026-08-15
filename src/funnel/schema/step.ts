@@ -69,6 +69,15 @@ export const StepLogic = z
       .describe(
         "Avaliadas em ordem ao sair do step; a primeira que casar define o destino. Se nenhuma casar, segue para o próximo step da lista.",
       ),
+    /**
+     * Destino padrão ao sair, no lugar da próxima tela da lista.
+     *
+     * Sem isto, o "próximo" é sempre a ordem da lista — o que quebra em
+     * ramificação: as telas de cada caminho ficam uma depois da outra na lista,
+     * e quem entra no primeiro caminho acaba caindo no segundo. Com `next`, cada
+     * ramo diz para onde converge quando termina.
+     */
+    next: SlugId.optional(),
     /** Encerra o funil neste step, ignorando steps seguintes. */
     isEnd: z.boolean().optional(),
   })

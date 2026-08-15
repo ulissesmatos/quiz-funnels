@@ -111,3 +111,76 @@ describe("lint do funil", () => {
     expect(temCodigo(lintFunnel(doc), "sem_captura")).toBe(true);
   });
 });
+
+describe("personalização", () => {
+  it("não reclama do funil de exemplo, que varia por pontuação", () => {
+    // O template não ramifica, mas os outcomes do resultado têm condição —
+    // isso já é o funil respondendo às respostas.
+    expect(temCodigo(lintFunnel(base), "sem_personalizacao")).toBe(false);
+  });
+
+  it("acusa funil longo em que nada muda conforme as respostas", () => {
+    // Mesmas telas do template, mas com o resultado sem condição nenhuma.
+    const doc: FunnelDocument = {
+      ...base,
+      steps: base.steps.map((step) =>
+        step.id === "step_resultado"
+          ? {
+              ...step,
+              blocks: step.blocks.map((block) =>
+                block.type === "result"
+                  ? {
+                      ...block,
+                      props: {
+                        outcomes: [{ id: "unico", title: "Seu resultado", description: "Igual para todo mundo." }],
+                      },
+                    }
+                  : block,
+              ),
+            }
+          : step,
+      ),
+    } as FunnelDocument;
+
+    const issues = lintFunnel(doc);
+    expect(temCodigo(issues, "sem_personalizacao")).toBe(true);
+
+    // A mensagem precisa dizer o que fazer, não só que está errado.
+    const aviso = issues.find((i) => i.code === "sem_personalizacao")!;
+    expect(aviso.message).toContain("branch_by_answer");
+    expect(aviso.message).toContain("set_block_visibility");
+  });
+
+  it("não reclama de funil curto, que pode ser linear de propósito", () => {
+    const doc: FunnelDocument = { ...base, steps: [base.steps[0], base.steps[1], base.steps[2]] };
+    expect(temCodigo(lintFunnel(doc), "sem_personalizacao")).toBe(false);
+  });
+
+  it("um bloco condicional já conta como personalização", () => {
+    const doc: FunnelDocument = {
+      ...base,
+      steps: base.steps.map((step) =>
+        step.id === "step_oferta"
+          ? {
+              ...step,
+              blocks: step.blocks.map((block, index) =>
+                index === 0
+                  ? {
+                      ...block,
+                      visibleIf: {
+                        kind: "leaf" as const,
+                        ref: { source: "answer" as const, key: "objetivo" },
+                        op: "eq" as const,
+                        value: "perder_peso",
+                      },
+                    }
+                  : block,
+              ),
+            }
+          : step,
+      ),
+    } as FunnelDocument;
+
+    expect(temCodigo(lintFunnel(doc), "sem_personalizacao")).toBe(false);
+  });
+});

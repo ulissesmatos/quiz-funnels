@@ -7,6 +7,7 @@ import {
   MiniMap,
   ReactFlow,
   ReactFlowProvider,
+  useReactFlow,
   type Connection,
   type Edge,
   type EdgeMouseHandler,
@@ -54,6 +55,7 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
   const selectedStepId = useEditor((s) => s.selectedStepId);
   const selectStep = useEditor((s) => s.selectStep);
 
+  const { fitView } = useReactFlow();
   const [edicao, setEdicao] = useState<EdicaoDeRegra | null>(null);
 
   const grafo = useMemo(() => buildGraph(doc, onAbrirTela), [doc, onAbrirTela]);
@@ -167,7 +169,10 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
       })),
       { label: "Reorganizar fluxo" },
     );
-  }, [store]);
+
+    // Reorganizar sem reenquadrar deixa o mapa arrumado fora da vista.
+    requestAnimationFrame(() => fitView({ padding: 0.2, minZoom: 0.55, maxZoom: 1, duration: 300 }));
+  }, [fitView, store]);
 
   function salvarRegra(condicao: Condition) {
     if (!edicao) return;
@@ -291,30 +296,44 @@ function BarraDeAcoes({
     if (!step || !escolha) return;
 
     const estado = store.getState();
+    const documento = estado.doc;
+
+    // Para onde os ramos convergem: o que vinha depois da pergunta. Sem isso,
+    // as telas dos ramos ficam em sequência na lista e quem entra no primeiro
+    // caminho acaba caindo dentro do segundo.
+    const indice = documento.steps.findIndex((s) => s.id === step.id);
+    const convergencia = documento.steps[indice + 1]?.id;
+
     const branches: { optionId: string; goto: string }[] = [];
     const ops: Parameters<typeof estado.dispatchMany>[0] = [];
 
     let anterior = step.id;
 
     for (const opcao of escolha.props.options) {
-      const novaTela = {
-        id: `step_${escolha.props.name}_${opcao.id}`.slice(0, 60),
-        name: `${opcao.label}`,
-        type: "content" as const,
-        layout: { align: "center" as const, fullHeight: true },
-        blocks: [
-          {
-            id: `blk_${opcao.id}_titulo`.slice(0, 60),
-            type: "heading" as const,
-            props: { text: opcao.label, level: 1 as const },
-          },
-        ],
-        logic: { rules: [] },
-      };
+      const idDaTela = `step_${escolha.props.name}_${opcao.id}`.slice(0, 60);
 
-      ops.push({ type: "add_step", step: novaTela, afterStepId: anterior });
-      branches.push({ optionId: opcao.id, goto: novaTela.id });
-      anterior = novaTela.id;
+      ops.push({
+        type: "add_step",
+        step: {
+          id: idDaTela,
+          name: opcao.label,
+          type: "content",
+          layout: { align: "center", fullHeight: true },
+          blocks: [
+            {
+              id: `blk_${opcao.id}_titulo`.slice(0, 60),
+              type: "heading",
+              props: { text: opcao.label, level: 1 },
+            },
+          ],
+          // Sem convergência (a pergunta era a última tela), o ramo encerra.
+          logic: convergencia ? { rules: [], next: convergencia } : { rules: [], isEnd: true },
+        },
+        afterStepId: anterior,
+      });
+
+      branches.push({ optionId: opcao.id, goto: idDaTela });
+      anterior = idDaTela;
     }
 
     ops.push({ type: "branch_by_answer", stepId: step.id, blockId: escolha.id, branches, replace: true });

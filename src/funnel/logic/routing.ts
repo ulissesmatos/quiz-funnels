@@ -28,6 +28,12 @@ export function resolveNextStepId(
     }
   }
 
+  // Destino fixo declarado na tela vence a ordem da lista. É o que faz um ramo
+  // de ramificação convergir em vez de escorregar para o ramo seguinte.
+  if (step.logic.next && doc.steps.some((s) => s.id === step.logic.next)) {
+    return step.logic.next;
+  }
+
   return nextInOrder(doc, index);
 }
 
