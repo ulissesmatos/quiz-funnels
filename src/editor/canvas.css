@@ -1,0 +1,180 @@
+/**
+ * Camada do editor por cima do funil.
+ * Tudo aqui é `ed-*`; nada disso vaza para a página pública.
+ */
+
+.ed-canvas-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  justify-content: center;
+  padding: 20px 12px 80px;
+  background:
+    radial-gradient(circle at 1px 1px, var(--color-app-border) 1px, transparent 0) 0 0 / 22px 22px;
+}
+
+.ed-canvas-frame {
+  width: 100%;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--color-app-border);
+  box-shadow: 0 20px 60px rgb(0 0 0 / 0.35);
+  transition: max-width 200ms ease;
+  align-self: flex-start;
+}
+
+.ed-canvas-frame--mobile { max-width: 400px; }
+.ed-canvas-frame--desktop { max-width: 1024px; }
+
+/* O funil ocupa a altura toda da janela; dentro do quadro isso viraria uma
+   tela gigante, então o mínimo passa a valer sobre o quadro. */
+.ed-canvas-frame .fn-root { min-height: 620px; }
+.ed-canvas-frame .fn-step { min-height: 620px; }
+.ed-canvas-frame .fn-step[data-full-height="false"] { min-height: auto; }
+
+/* ── Bloco selecionável ───────────────────────────────────── */
+
+.ed-block {
+  position: relative;
+  border-radius: 8px;
+  outline: 1px dashed transparent;
+  outline-offset: 4px;
+  transition: outline-color 120ms ease;
+}
+
+.ed-block:hover { outline-color: color-mix(in oklab, var(--color-app-primary) 45%, transparent); }
+.ed-block--selected { outline: 2px solid var(--color-app-primary); outline-offset: 4px; }
+.ed-block--dragging { opacity: 0.4; }
+
+/* Pulso curto quando a IA mexe no bloco — mostra onde a mudança aconteceu. */
+.ed-block--highlighted {
+  outline: 2px solid var(--color-app-success);
+  animation: ed-pulse 1.4s ease-out;
+}
+
+@keyframes ed-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-app-success) 55%, transparent); }
+  100% { box-shadow: 0 0 0 14px transparent; }
+}
+
+/* Cliques vão para o wrapper: dentro do canvas, tocar num botão do funil
+   seleciona o bloco em vez de disparar a ação dele. */
+.ed-block-content { pointer-events: none; }
+
+/* ── Barra de ações do bloco ──────────────────────────────── */
+
+.ed-block-toolbar {
+  position: absolute;
+  top: -12px;
+  right: 0;
+  z-index: 3;
+  display: none;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--color-app-surface-2);
+  border: 1px solid var(--color-app-border);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+  font-family: var(--font-sans);
+}
+
+.ed-block:hover .ed-block-toolbar,
+.ed-block--selected .ed-block-toolbar {
+  display: flex;
+}
+
+.ed-block-label {
+  font-size: 11px;
+  color: var(--color-app-muted);
+  padding-inline: 4px;
+  white-space: nowrap;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ed-block-handle,
+.ed-block-action {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-app-muted);
+  cursor: pointer;
+}
+
+.ed-block-handle { cursor: grab; touch-action: none; }
+.ed-block-handle:active { cursor: grabbing; }
+
+.ed-block-action:hover,
+.ed-block-handle:hover {
+  background: var(--color-app-border);
+  color: var(--color-app-text);
+}
+
+.ed-block-action--danger:hover {
+  background: color-mix(in oklab, var(--color-app-danger) 25%, transparent);
+  color: var(--color-app-danger);
+}
+
+/* ── Estado vazio ─────────────────────────────────────────── */
+
+.ed-empty {
+  border: 1px dashed var(--fn-color-border);
+  border-radius: var(--fn-radius-lg);
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--fn-color-muted);
+  font-family: var(--font-sans);
+}
+
+.ed-empty-hint { font-size: 13px; opacity: 0.75; margin-top: 6px; }
+
+/* ── Controles do inspector ───────────────────────────────── */
+
+.ed-control {
+  width: 100%;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-app-text);
+  background: var(--color-app-surface-2);
+  border: 1px solid var(--color-app-border);
+  border-radius: 8px;
+}
+
+.ed-control:focus {
+  outline: none;
+  border-color: var(--color-app-primary);
+}
+
+select.ed-control {
+  cursor: pointer;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 15px) 14px, calc(100% - 10px) 14px;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 28px;
+}
+
+/* ── Item da paleta sendo arrastado ───────────────────────── */
+
+.ed-drag-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--color-app-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.4);
+}

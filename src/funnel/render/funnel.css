@@ -1,0 +1,657 @@
+/**
+ * Folha de estilo do funil público.
+ *
+ * Não usa Tailwind de propósito: o funil precisa ser 100% editável pelo tema, e
+ * classes utilitárias fixas atrapalhariam isso. Tudo aqui lê CSS variables —
+ * `--fn-*` vêm do tema, `--b-*` vêm do `style` de cada bloco.
+ */
+
+.fn-root {
+  /**
+   * O funil se adapta à largura do PRÓPRIO container, não à da janela.
+   *
+   * Com media query, o preview do editor — que é um quadro estreito dentro de
+   * uma tela larga — receberia os tamanhos de desktop e mostraria um layout que
+   * não é o que o visitante veria. Com container query, a mesma folha serve o
+   * preview e a página publicada sem nenhum caso especial.
+   */
+  container-type: inline-size;
+  container-name: fn;
+
+  background: var(--fn-color-bg);
+  color: var(--fn-color-text);
+  font-family: var(--fn-font-body);
+  font-weight: var(--fn-weight-body);
+  font-size: var(--fn-text-md);
+  line-height: 1.55;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+}
+
+.fn-root *,
+.fn-root *::before,
+.fn-root *::after {
+  box-sizing: border-box;
+}
+
+/* ── Step ─────────────────────────────────────────────────── */
+
+.fn-step {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  padding: var(--fn-space-lg) var(--fn-space-md);
+  background-size: cover;
+  background-position: center;
+}
+
+.fn-step[data-full-height="false"] {
+  min-height: auto;
+}
+
+.fn-step-inner {
+  width: 100%;
+  max-width: var(--fn-step-width, var(--fn-content-width));
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/**
+ * Faixa presa ao topo da tela (hoje, a barra de progresso).
+ * Fica no fluxo como irmã do conteúdo, então reserva o próprio espaço: numa
+ * tela centralizada e curta, o conteúdo para logo abaixo dela em vez de passar
+ * por baixo, como aconteceria com posicionamento absoluto.
+ */
+.fn-step-header {
+  width: 100%;
+  max-width: var(--fn-step-width, var(--fn-content-width));
+  margin-inline: auto;
+  margin-bottom: var(--fn-space-lg);
+  flex-shrink: 0;
+}
+
+.fn-step-header .fn-block { margin-bottom: 0; }
+
+.fn-step[data-full-height="true"] .fn-step-inner {
+  margin-block: auto;
+}
+
+.fn-step[data-align="center"] .fn-step-inner {
+  text-align: center;
+}
+
+/* Sobreposição escura para manter texto legível sobre imagem de fundo. */
+.fn-step-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+}
+
+.fn-step-wrapper {
+  position: relative;
+}
+
+/* ── Bloco: wrapper comum ─────────────────────────────────── */
+
+.fn-block {
+  display: var(--b-display, block);
+  text-align: var(--b-align, inherit);
+  background: var(--b-bg, transparent);
+  margin-top: var(--b-mt, 0px);
+  margin-bottom: var(--b-mb, var(--fn-space-md));
+  padding: var(--b-py, 0px) var(--b-px, 0px);
+  border-radius: var(--b-radius, 0px);
+  border: var(--b-bw, 0px) solid var(--b-bc, transparent);
+  box-shadow: var(--b-shadow, none);
+  max-width: var(--b-maxw, none);
+  min-width: 0;
+}
+
+.fn-block:last-child {
+  margin-bottom: 0;
+}
+
+/* Centraliza o bloco quando ele tem largura máxima menor que o container. */
+.fn-block[style*="--b-maxw"] {
+  margin-inline: auto;
+}
+
+@container fn (min-width: 768px) {
+  .fn-block {
+    display: var(--b-display-md, var(--b-display, block));
+    text-align: var(--b-align-md, var(--b-align, inherit));
+  }
+}
+
+/* ── Animação de entrada ──────────────────────────────────── */
+
+.fn-anim {
+  animation-duration: var(--b-anim-duration, 400ms);
+  animation-delay: var(--b-anim-delay, 0ms);
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fn-anim[data-preset="fade"] { animation-name: fn-fade; }
+.fn-anim[data-preset="fade_up"] { animation-name: fn-fade-up; }
+.fn-anim[data-preset="fade_down"] { animation-name: fn-fade-down; }
+.fn-anim[data-preset="zoom"] { animation-name: fn-zoom; }
+.fn-anim[data-preset="slide_left"] { animation-name: fn-slide-left; }
+.fn-anim[data-preset="slide_right"] { animation-name: fn-slide-right; }
+
+@keyframes fn-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fn-fade-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes fn-fade-down { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: none; } }
+@keyframes fn-zoom { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+@keyframes fn-slide-left { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes fn-slide-right { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+
+/* Transição entre steps. */
+.fn-step-enter { animation: fn-fade 260ms both; }
+.fn-step-enter[data-transition="slide"] { animation-name: fn-slide-left; }
+.fn-step-enter[data-transition="slide_up"] { animation-name: fn-fade-up; }
+.fn-step-enter[data-transition="none"] { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fn-root *,
+  .fn-root *::before,
+  .fn-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── Título e texto ───────────────────────────────────────── */
+
+.fn-heading {
+  font-family: var(--fn-font-heading);
+  font-weight: var(--b-weight, var(--fn-weight-heading));
+  color: var(--b-color, inherit);
+  line-height: var(--b-lh, 1.2);
+  letter-spacing: var(--b-ls, -0.01em);
+  margin: 0;
+  text-wrap: balance;
+}
+
+.fn-heading[data-level="1"] { font-size: var(--b-size, var(--fn-text-3xl)); }
+.fn-heading[data-level="2"] { font-size: var(--b-size, var(--fn-text-xl)); }
+.fn-heading[data-level="3"] { font-size: var(--b-size, var(--fn-text-lg)); }
+
+@container fn (min-width: 768px) {
+  .fn-heading[data-level="1"] { font-size: var(--b-size-md, var(--b-size, var(--fn-text-4xl))); }
+  .fn-heading[data-level="2"] { font-size: var(--b-size-md, var(--b-size, var(--fn-text-2xl))); }
+  .fn-heading[data-level="3"] { font-size: var(--b-size-md, var(--b-size, var(--fn-text-xl))); }
+}
+
+.fn-text {
+  margin: 0;
+  color: var(--b-color, var(--fn-color-muted));
+  font-size: var(--b-size, var(--fn-text-md));
+  font-weight: var(--b-weight, inherit);
+  line-height: var(--b-lh, 1.6);
+  letter-spacing: var(--b-ls, normal);
+  text-wrap: pretty;
+}
+
+.fn-text + .fn-text {
+  margin-top: 0.75em;
+}
+
+.fn-text a {
+  color: var(--fn-color-primary);
+  text-underline-offset: 3px;
+}
+
+/* ── Lista ────────────────────────────────────────────────── */
+
+.fn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fn-space-sm);
+  text-align: left;
+}
+
+.fn-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fn-space-sm);
+}
+
+.fn-list-marker {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: var(--fn-radius-full);
+  font-size: var(--fn-text-sm);
+  line-height: 1;
+}
+
+.fn-list-marker[data-marker="check"],
+.fn-list-marker[data-marker="number"] {
+  background: color-mix(in oklab, var(--fn-color-primary) 18%, transparent);
+  color: var(--fn-color-primary);
+  font-weight: 600;
+}
+
+.fn-list-marker[data-marker="dot"]::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fn-color-primary);
+}
+
+.fn-list-title {
+  font-weight: 500;
+  color: var(--b-color, var(--fn-color-text));
+}
+
+.fn-list-desc {
+  color: var(--fn-color-muted);
+  font-size: var(--fn-text-sm);
+}
+
+/* ── Mídia ────────────────────────────────────────────────── */
+
+.fn-media {
+  display: block;
+  width: 100%;
+  border-radius: var(--b-radius, var(--fn-radius-lg));
+  overflow: hidden;
+}
+
+.fn-media img,
+.fn-media video,
+.fn-media iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.fn-media-placeholder {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  min-height: 160px;
+  background: var(--fn-color-surface);
+  border: 1px dashed var(--fn-color-border);
+  border-radius: var(--fn-radius-lg);
+  color: var(--fn-color-muted);
+  font-size: var(--fn-text-sm);
+  padding: var(--fn-space-lg);
+  text-align: center;
+}
+
+/* ── Botão ────────────────────────────────────────────────── */
+
+.fn-button {
+  appearance: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-direction: column;
+  font-family: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  border: 2px solid transparent;
+  border-radius: var(--fn-button-radius);
+  box-shadow: var(--fn-button-shadow);
+  transition: transform 120ms ease, filter 120ms ease, background-color 120ms ease;
+  line-height: 1.2;
+}
+
+.fn-button[data-full="true"] { width: 100%; }
+.fn-button[data-size="sm"] { padding: 10px 16px; font-size: var(--fn-text-sm); }
+.fn-button[data-size="md"] { padding: 14px 22px; font-size: var(--fn-text-md); }
+.fn-button[data-size="lg"] { padding: 18px 26px; font-size: var(--fn-text-lg); }
+
+.fn-button[data-variant="solid"] {
+  background: var(--fn-color-primary);
+  color: var(--fn-color-primary-fg);
+}
+
+.fn-button[data-variant="outline"] {
+  background: transparent;
+  border-color: var(--fn-color-primary);
+  color: var(--fn-color-primary);
+  box-shadow: none;
+}
+
+.fn-button[data-variant="soft"] {
+  background: color-mix(in oklab, var(--fn-color-primary) 16%, transparent);
+  color: var(--fn-color-primary);
+  box-shadow: none;
+}
+
+.fn-button[data-variant="ghost"] {
+  background: transparent;
+  color: var(--fn-color-text);
+  box-shadow: none;
+}
+
+.fn-button[data-uppercase="true"] {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fn-button:hover { filter: brightness(1.08); }
+.fn-button:active { transform: scale(0.985); }
+.fn-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.fn-button-sub {
+  font-size: 0.78em;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.fn-button-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Opções (choice) ──────────────────────────────────────── */
+
+.fn-choice {
+  display: grid;
+  gap: var(--fn-space-sm);
+  text-align: left;
+}
+
+.fn-choice[data-layout="list"] { grid-template-columns: 1fr; }
+.fn-choice[data-layout="grid2"] { grid-template-columns: repeat(2, 1fr); }
+.fn-choice[data-layout="grid3"] { grid-template-columns: repeat(2, 1fr); }
+
+@container fn (min-width: 768px) {
+  .fn-choice[data-layout="grid3"] { grid-template-columns: repeat(3, 1fr); }
+}
+
+.fn-option {
+  appearance: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--fn-space-sm);
+  width: 100%;
+  padding: 16px;
+  font: inherit;
+  text-align: left;
+  color: var(--fn-color-text);
+  background: var(--fn-color-surface);
+  border: 2px solid var(--fn-color-border);
+  border-radius: var(--fn-radius-md);
+  transition: border-color 120ms ease, background-color 120ms ease, transform 120ms ease;
+}
+
+.fn-option:hover {
+  border-color: color-mix(in oklab, var(--fn-color-primary) 60%, var(--fn-color-border));
+}
+
+.fn-option:active { transform: scale(0.99); }
+
+.fn-option[data-selected="true"] {
+  border-color: var(--fn-color-primary);
+  background: color-mix(in oklab, var(--fn-color-primary) 14%, var(--fn-color-surface));
+}
+
+.fn-option[data-layout="grid2"],
+.fn-option[data-layout="grid3"] {
+  flex-direction: column;
+  align-items: stretch;
+  text-align: center;
+  gap: 10px;
+}
+
+.fn-option-emoji {
+  font-size: 1.5em;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.fn-option-letter {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--fn-radius-sm);
+  background: color-mix(in oklab, var(--fn-color-primary) 16%, transparent);
+  color: var(--fn-color-primary);
+  font-size: var(--fn-text-sm);
+  font-weight: 600;
+}
+
+/* São `span` para poderem viver dentro do `button`, mas empilham como bloco. */
+.fn-option-body { flex: 1; min-width: 0; display: block; }
+.fn-option-label { display: block; font-weight: 500; }
+.fn-option-desc {
+  display: block;
+  font-size: var(--fn-text-sm);
+  color: var(--fn-color-muted);
+  margin-top: 2px;
+}
+
+.fn-option-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--fn-radius-sm);
+}
+
+.fn-option-check {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--fn-radius-full);
+  border: 2px solid var(--fn-color-border);
+  display: grid;
+  place-items: center;
+}
+
+.fn-option[data-selected="true"] .fn-option-check {
+  border-color: var(--fn-color-primary);
+  background: var(--fn-color-primary);
+  color: var(--fn-color-primary-fg);
+}
+
+/* ── Campos ───────────────────────────────────────────────── */
+
+.fn-field { display: flex; flex-direction: column; gap: 6px; text-align: left; }
+
+.fn-field-label {
+  font-size: var(--fn-text-sm);
+  font-weight: 500;
+  color: var(--fn-color-text);
+}
+
+.fn-input {
+  width: 100%;
+  padding: 14px 16px;
+  font: inherit;
+  color: var(--fn-color-text);
+  background: var(--fn-color-surface);
+  border: 2px solid var(--fn-color-border);
+  border-radius: var(--fn-radius-md);
+  transition: border-color 120ms ease;
+}
+
+.fn-input::placeholder { color: var(--fn-color-muted); }
+.fn-input:focus { outline: none; border-color: var(--fn-color-primary); }
+.fn-input[data-invalid="true"] { border-color: var(--fn-color-danger); }
+
+textarea.fn-input { min-height: 120px; resize: vertical; }
+
+.fn-field-help { font-size: var(--fn-text-xs); color: var(--fn-color-muted); }
+.fn-field-error { font-size: var(--fn-text-xs); color: var(--fn-color-danger); }
+
+/* ── Progresso ────────────────────────────────────────────── */
+
+/**
+ * Numa tela centralizada verticalmente, a barra ficaria boiando no meio. Com
+ * `sticky` ela sobe para o topo do step — que é onde todo funil a coloca.
+ */
+.fn-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fn-text-xs);
+  color: var(--fn-color-muted);
+  margin-bottom: 6px;
+}
+
+.fn-progress-track {
+  height: 8px;
+  width: 100%;
+  background: var(--fn-color-surface);
+  border-radius: var(--fn-radius-full);
+  overflow: hidden;
+}
+
+.fn-progress-bar {
+  height: 100%;
+  background: var(--fn-color-primary);
+  border-radius: inherit;
+  transition: width 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Loader ("Personalizando seu plano") ──────────────────── */
+
+.fn-loader { display: flex; flex-direction: column; gap: var(--fn-space-lg); align-items: center; }
+
+.fn-loader-ring {
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.fn-loader-ring svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+.fn-loader-ring-track { stroke: var(--fn-color-border); }
+.fn-loader-ring-fill {
+  stroke: var(--fn-color-primary);
+  transition: stroke-dashoffset 300ms linear;
+}
+
+.fn-loader-percent {
+  position: absolute;
+  font-weight: 700;
+  font-size: var(--fn-text-lg);
+  font-family: var(--fn-font-heading);
+}
+
+.fn-loader-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+}
+
+.fn-loader-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--fn-color-muted);
+  transition: color 300ms ease, opacity 300ms ease;
+  opacity: 0.5;
+}
+
+.fn-loader-step[data-state="active"] { color: var(--fn-color-text); opacity: 1; }
+.fn-loader-step[data-state="done"] { color: var(--fn-color-text); opacity: 1; }
+
+.fn-loader-step-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--fn-radius-full);
+  border: 2px solid currentColor;
+}
+
+.fn-loader-step[data-state="done"] .fn-loader-step-icon {
+  background: var(--fn-color-success);
+  border-color: var(--fn-color-success);
+  color: #fff;
+}
+
+.fn-spin { animation: fn-spin 900ms linear infinite; }
+@keyframes fn-spin { to { transform: rotate(360deg); } }
+
+/* ── Resultado ────────────────────────────────────────────── */
+
+.fn-result {
+  background: var(--fn-color-surface);
+  border: 1px solid var(--fn-color-border);
+  border-radius: var(--fn-radius-lg);
+  padding: var(--fn-space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fn-space-sm);
+}
+
+.fn-result-badge {
+  align-self: flex-start;
+  font-size: var(--fn-text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--fn-color-primary);
+  background: color-mix(in oklab, var(--fn-color-primary) 16%, transparent);
+  padding: 4px 10px;
+  border-radius: var(--fn-radius-full);
+}
+
+.fn-step[data-align="center"] .fn-result-badge { align-self: center; }
+
+.fn-result-title {
+  font-family: var(--fn-font-heading);
+  font-weight: var(--fn-weight-heading);
+  font-size: var(--fn-text-2xl);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.fn-result-image { width: 100%; border-radius: var(--fn-radius-md); }
+
+/* ── Layout ───────────────────────────────────────────────── */
+
+.fn-container { display: grid; }
+
+/* No mobile o container sempre empilha; só no desktop ele divide em colunas. */
+@container fn (min-width: 768px) {
+  .fn-container[data-has-md="true"] {
+    grid-template-columns: repeat(var(--fn-cols-md), minmax(0, 1fr));
+  }
+}
+
+/* Dentro de um grid quem dá o espaçamento é o `gap`, não a margem do bloco. */
+.fn-container > .fn-block { margin-bottom: 0; }
+
+.fn-divider {
+  border: 0;
+  border-top: var(--b-bw, 1px) solid var(--b-bc, var(--fn-color-border));
+  margin: 0;
+  width: 100%;
+}
+
+.fn-branding {
+  margin-top: var(--fn-space-lg);
+  text-align: center;
+  font-size: var(--fn-text-xs);
+  color: var(--fn-color-muted);
+  opacity: 0.7;
+}
+
+.fn-branding a { color: inherit; }

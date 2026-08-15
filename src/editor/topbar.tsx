@@ -1,0 +1,182 @@
+"use client";
+
+import {
+  ArrowLeft,
+  Check,
+  CloudAlert,
+  ExternalLink,
+  Loader2,
+  Monitor,
+  Redo2,
+  Smartphone,
+  Undo2,
+  UploadCloud,
+} from "lucide-react";
+import Link from "next/link";
+import { useState, useTransition } from "react";
+
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
+import { publishFunnelAction } from "@/server/funnels/actions";
+
+import { useDocument, useEditor } from "./editor-context";
+
+export function Topbar({ funnelId }: { funnelId: string }) {
+  const doc = useDocument();
+  const saveStatus = useEditor((s) => s.saveStatus);
+  const saveError = useEditor((s) => s.saveError);
+  const viewport = useEditor((s) => s.viewport);
+  const setViewport = useEditor((s) => s.setViewport);
+  const undo = useEditor((s) => s.undo);
+  const redo = useEditor((s) => s.redo);
+  const podeDesfazer = useEditor((s) => s.past.length > 0);
+  const podeRefazer = useEditor((s) => s.future.length > 0);
+
+  const [publicando, iniciarPublicacao] = useTransition();
+  const [erroPublicacao, setErroPublicacao] = useState<string | null>(null);
+  const [publicadoAgora, setPublicadoAgora] = useState(false);
+
+  function publicar() {
+    setErroPublicacao(null);
+    iniciarPublicacao(async () => {
+      const resultado = await publishFunnelAction(funnelId);
+      if (resultado.ok) {
+        setPublicadoAgora(true);
+        setTimeout(() => setPublicadoAgora(false), 3000);
+      } else {
+        setErroPublicacao(resultado.error);
+      }
+    });
+  }
+
+  return (
+    <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-app-border bg-app-surface px-3 py-2">
+      <Link
+        href="/funis"
+        className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-app-muted hover:bg-app-surface-2 hover:text-app-text"
+      >
+        <ArrowLeft size={15} />
+        <span className="hidden sm:inline">Funis</span>
+      </Link>
+
+      <span className="max-w-40 truncate text-sm font-medium">{doc.name}</span>
+
+      <StatusDeSalvamento status={saveStatus} erro={saveError} />
+
+      <div className="ml-auto flex items-center gap-1">
+        <IconeDeAcao label="Desfazer" onClick={undo} disabled={!podeDesfazer}>
+          <Undo2 size={15} />
+        </IconeDeAcao>
+        <IconeDeAcao label="Refazer" onClick={redo} disabled={!podeRefazer}>
+          <Redo2 size={15} />
+        </IconeDeAcao>
+
+        <div className="mx-1 flex rounded-lg border border-app-border p-0.5">
+          <IconeDeAcao
+            label="Visualizar como celular"
+            onClick={() => setViewport("mobile")}
+            ativo={viewport === "mobile"}
+          >
+            <Smartphone size={14} />
+          </IconeDeAcao>
+          <IconeDeAcao
+            label="Visualizar como desktop"
+            onClick={() => setViewport("desktop")}
+            ativo={viewport === "desktop"}
+          >
+            <Monitor size={14} />
+          </IconeDeAcao>
+        </div>
+
+        <a
+          href={`/f/${doc.slug}`}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-app-muted hover:bg-app-surface-2 hover:text-app-text"
+          title="Abrir a versão publicada"
+        >
+          <ExternalLink size={15} />
+          <span className="hidden md:inline">Ver no ar</span>
+        </a>
+
+        <Button size="sm" onClick={publicar} disabled={publicando}>
+          {publicando ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : publicadoAgora ? (
+            <Check size={14} />
+          ) : (
+            <UploadCloud size={14} />
+          )}
+          {publicadoAgora ? "Publicado" : "Publicar"}
+        </Button>
+      </div>
+
+      {erroPublicacao && (
+        <p role="alert" className="w-full text-xs text-app-danger">
+          {erroPublicacao}
+        </p>
+      )}
+    </header>
+  );
+}
+
+/**
+ * Em tela estreita não cabe o texto ao lado do ícone, mas o estado do
+ * salvamento não pode ficar só implícito num desenho: `role="status"` com
+ * `aria-label` mantém a informação disponível para leitores de tela e para
+ * quem passa o mouse, sem ocupar largura.
+ */
+function StatusDeSalvamento({ status, erro }: { status: string; erro: string | null }) {
+  const texto =
+    status === "erro"
+      ? "Não salvo"
+      : { salvo: "Salvo", salvando: "Salvando...", pendente: "Alterações pendentes" }[status];
+
+  return (
+    <span
+      role="status"
+      aria-label={texto}
+      title={erro ?? texto}
+      className={cn(
+        "flex items-center gap-1 text-xs",
+        status === "erro" ? "text-app-danger" : "text-app-muted",
+      )}
+    >
+      {status === "erro" && <CloudAlert size={13} />}
+      {status === "salvando" && <Loader2 size={12} className="animate-spin" />}
+      {status === "salvo" && <Check size={12} />}
+      <span className="hidden sm:inline">{texto}</span>
+    </span>
+  );
+}
+
+function IconeDeAcao({
+  label,
+  onClick,
+  disabled,
+  ativo,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  ativo?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "grid h-8 w-8 place-items-center rounded-md transition-colors",
+        ativo ? "bg-app-surface-2 text-app-text" : "text-app-muted hover:bg-app-surface-2",
+        "disabled:opacity-30 disabled:hover:bg-transparent",
+      )}
+    >
+      {children}
+    </button>
+  );
+}

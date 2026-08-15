@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/**
+ * Tokens do SHELL da aplicação (dashboard e editor).
+ * O funil público não usa nada daqui: ele monta as próprias CSS variables a
+ * partir do tema do documento, justamente para poder ser 100% editável.
+ */
+@theme {
+  --color-app-bg: #0b0c12;
+  --color-app-surface: #14161f;
+  --color-app-surface-2: #1c1f2b;
+  --color-app-border: #262a38;
+  --color-app-text: #e9eaf0;
+  --color-app-muted: #8b91a6;
+  --color-app-primary: #6c4bf6;
+  --color-app-primary-hover: #7d5ff7;
+  --color-app-danger: #ef4444;
+  --color-app-success: #22c55e;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-app-bg);
+  color: var(--color-app-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Foco visível e consistente em todo o shell. */
+:focus-visible {
+  outline: 2px solid var(--color-app-primary);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-app-primary) 40%, transparent);
+}
