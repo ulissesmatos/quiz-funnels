@@ -3,6 +3,7 @@
 import {
   ArrowLeft,
   Check,
+  CircleAlert,
   CloudAlert,
   ExternalLink,
   LayoutTemplate,
@@ -15,9 +16,10 @@ import {
   Workflow,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { lintFunnel } from "@/funnel/logic/lint";
 import { cn } from "@/lib/cn";
 import { publishFunnelAction } from "@/server/funnels/actions";
 
@@ -42,6 +44,11 @@ export function Topbar({
   const redo = useEditor((s) => s.redo);
   const podeDesfazer = useEditor((s) => s.past.length > 0);
   const podeRefazer = useEditor((s) => s.future.length > 0);
+
+  const errosDeEstrutura = useMemo(
+    () => lintFunnel(doc).filter((issue) => issue.severity === "erro"),
+    [doc],
+  );
 
   const [publicando, iniciarPublicacao] = useTransition();
   const [erroPublicacao, setErroPublicacao] = useState<string | null>(null);
@@ -99,6 +106,22 @@ export function Topbar({
 
       <StatusDeSalvamento status={saveStatus} erro={saveError} />
 
+      {/* Problema de estrutura barra a publicação, então precisa aparecer
+          enquanto se edita — não só quando a pessoa tenta publicar. */}
+      {errosDeEstrutura.length > 0 && (
+        <button
+          type="button"
+          onClick={() => onVistaChange("fluxo")}
+          title={errosDeEstrutura.map((e) => e.message).join("\n\n")}
+          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-app-danger transition-colors hover:bg-app-danger/15"
+        >
+          <CircleAlert size={13} />
+          {errosDeEstrutura.length === 1
+            ? "1 problema no fluxo"
+            : `${errosDeEstrutura.length} problemas no fluxo`}
+        </button>
+      )}
+
       <div className="ml-auto flex items-center gap-1">
         <IconeDeAcao label="Desfazer" onClick={undo} disabled={!podeDesfazer}>
           <Undo2 size={15} />
@@ -148,7 +171,7 @@ export function Topbar({
       </div>
 
       {erroPublicacao && (
-        <p role="alert" className="w-full text-xs text-app-danger">
+        <p role="alert" className="w-full whitespace-pre-line text-xs leading-relaxed text-app-danger">
           {erroPublicacao}
         </p>
       )}

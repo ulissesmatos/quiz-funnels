@@ -68,6 +68,15 @@ export const aiToolSchemas = {
 
   remove_step: z.object({ stepId: SlugId }).strict(),
 
+  move_step: z
+    .object({
+      stepId: SlugId,
+      afterStepId: SlugId.nullable().describe(
+        "Move para logo depois desta tela. Passe null para levar ao começo do funil.",
+      ),
+    })
+    .strict(),
+
   add_block: z
     .object({
       stepId: SlugId.describe("Tela que recebe o bloco"),
@@ -184,6 +193,8 @@ export const aiToolDescriptions: Record<AiToolName, string> = {
   add_step: "Cria uma tela nova no funil.",
   update_step: "Altera nome, tipo ou layout de uma tela existente.",
   remove_step: "Remove uma tela. As regras que apontavam para ela são limpas.",
+  move_step:
+    "Muda a posição de uma tela na sequência. É como se conserta uma tela que ficou depois do fim do funil e por isso não é alcançada.",
   add_block: "Adiciona um bloco a uma tela. Mande o objeto props completo do tipo escolhido.",
   update_block: "Altera props de um bloco existente. Mande só o que muda.",
   remove_block: "Remove um bloco.",

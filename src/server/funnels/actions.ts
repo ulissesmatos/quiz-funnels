@@ -4,6 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { lintFunnel } from "@/funnel/logic/lint";
 import { createEmptyFunnel, describeParseError, parseFunnelDocument } from "@/funnel/schema";
 import { slugify } from "@/lib/slug";
 import { requireOrganization } from "@/server/auth/session";
@@ -81,6 +82,21 @@ export async function publishFunnelAction(funnelId: string): Promise<ActionResul
   const parsed = parseFunnelDocument(funnel.document);
   if (!parsed.success) {
     return { ok: false, error: `Não é possível publicar — ${describeParseError(parsed.error)}` };
+  }
+
+  /**
+   * O schema garante que o documento é bem formado, não que o funil funciona.
+   * Um funil pode ser válido e ainda assim ter a tela de resultado inalcançável
+   * — e aí ele vai ao ar coletando respostas que nunca levam a lugar nenhum.
+   * Erro de estrutura barra a publicação; aviso não.
+   */
+  const erros = lintFunnel(parsed.data).filter((issue) => issue.severity === "erro");
+
+  if (erros.length > 0) {
+    return {
+      ok: false,
+      error: `O funil tem ${erros.length === 1 ? "um problema" : `${erros.length} problemas`} que ${erros.length === 1 ? "impede" : "impedem"} a publicação:\n\n${erros.map((e) => `• ${e.message}`).join("\n\n")}`,
+    };
   }
 
   await db.transaction(async (tx) => {

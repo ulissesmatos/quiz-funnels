@@ -256,6 +256,69 @@ describe("ramificação por resposta", () => {
   });
 });
 
+describe("reordenar telas", () => {
+  it("move uma tela para depois de outra", () => {
+    const resultado = aplicarChamadaDaIa(base, "move_step", {
+      stepId: "step_resultado",
+      afterStepId: "step_inicio",
+    });
+
+    expect(resultado.ok, resultado.ok ? "" : resultado.error).toBe(true);
+    if (!resultado.ok) return;
+
+    expect(resultado.doc.steps[1].id).toBe("step_resultado");
+    expect(parseFunnelDocument(resultado.doc).success).toBe(true);
+  });
+
+  it("move para o começo com afterStepId nulo", () => {
+    const resultado = aplicarChamadaDaIa(base, "move_step", {
+      stepId: "step_oferta",
+      afterStepId: null,
+    });
+
+    expect(resultado.ok).toBe(true);
+    if (resultado.ok) expect(resultado.doc.steps[0].id).toBe("step_oferta");
+  });
+
+  it("conserta o caso real: resultado preso depois da oferta", () => {
+    // Reproduz o funil que foi ao ar quebrado — oferta marcada como fim, com o
+    // resultado atrás dela.
+    const doc = aplicarChamadaDaIa(base, "move_step", {
+      stepId: "step_resultado",
+      afterStepId: "step_oferta",
+    });
+    expect(doc.ok).toBe(true);
+    if (!doc.ok) return;
+
+    const comFimNoMeio = aplicarChamadaDaIa(doc.doc, "update_step", {
+      stepId: "step_oferta",
+      isEnd: true,
+    });
+    expect(comFimNoMeio.ok).toBe(true);
+    if (!comFimNoMeio.ok) return;
+
+    // O check precisa acusar, e apontar a causa e não só a vítima.
+    const relatorio = aplicarChamadaDaIa(comFimNoMeio.doc, "check_funnel", {});
+    expect(relatorio.ok).toBe(true);
+    if (!relatorio.ok) return;
+
+    expect(relatorio.resumo).toContain("fim do funil");
+    expect(relatorio.resumo).toContain("Resultado");
+
+    // E deve ser consertável movendo a tela de volta.
+    const consertado = aplicarChamadaDaIa(relatorio.doc, "move_step", {
+      stepId: "step_resultado",
+      afterStepId: "step_carregando",
+    });
+    expect(consertado.ok).toBe(true);
+    if (!consertado.ok) return;
+
+    const depois = aplicarChamadaDaIa(consertado.doc, "check_funnel", {});
+    expect(depois.ok).toBe(true);
+    if (depois.ok) expect(depois.resumo).not.toContain("não é alcançável");
+  });
+});
+
 describe("conteúdo condicional", () => {
   it("torna um bloco condicional e depois volta atrás", () => {
     const condicionado = aplicarChamadaDaIa(base, "set_block_visibility", {

@@ -25,7 +25,8 @@ export type FunnelIssue = {
     | "sem_cta"
     | "campo_duplicado"
     | "tela_vazia"
-    | "sem_personalizacao";
+    | "sem_personalizacao"
+    | "fim_prematuro";
   message: string;
   stepId?: string;
   blockId?: string;
@@ -101,6 +102,26 @@ export function lintFunnel(doc: FunnelDocument): FunnelIssue[] {
         stepId: step.id,
         message: `A tela "${step.name}" é a última e não está marcada como fim do funil.`,
       });
+    }
+
+    /**
+     * Encerrar o funil no meio da lista mata tudo o que vem depois.
+     *
+     * A checagem de alcance já acusa as telas órfãs, mas ela aponta as vítimas.
+     * Este aviso aponta a causa — que é o que permite consertar de uma vez, em
+     * vez de tela por tela.
+     */
+    if (step.logic.isEnd && !ehUltima) {
+      const orfas = doc.steps.slice(index + 1).filter((s) => !alcancados.has(s.id));
+
+      if (orfas.length > 0) {
+        issues.push({
+          severity: "erro",
+          code: "fim_prematuro",
+          stepId: step.id,
+          message: `A tela "${step.name}" está marcada como fim do funil, mas há ${orfas.length} tela(s) depois dela que ninguém chega a ver: ${orfas.map((s) => `"${s.name}"`).join(", ")}. Ou mova essas telas para antes dela, ou tire a marcação de fim.`,
+        });
+      }
     }
   });
 

@@ -106,6 +106,36 @@ export function aplicarChamadaDaIa(
         return concluir(doc, { type: "remove_step", stepId }, `Tela "${stepId}" removida`, []);
       }
 
+      case "move_step": {
+        const { stepId, afterStepId } = entrada as { stepId: string; afterStepId: string | null };
+
+        const atual = doc.steps.findIndex((s) => s.id === stepId);
+        if (atual === -1) return { ok: false, error: `A tela "${stepId}" não existe.` };
+
+        let destino = 0;
+
+        if (afterStepId !== null) {
+          const referencia = doc.steps.findIndex((s) => s.id === afterStepId);
+          if (referencia === -1) {
+            return { ok: false, error: `A tela de referência "${afterStepId}" não existe.` };
+          }
+
+          // Tirar a tela da lista desloca em um tudo o que vinha depois dela.
+          destino = referencia < atual ? referencia + 1 : referencia;
+        }
+
+        if (destino === atual) {
+          return { ok: false, error: "A tela já está nessa posição." };
+        }
+
+        return concluir(
+          doc,
+          { type: "move_step", stepId, toIndex: destino },
+          `Tela "${doc.steps[atual].name}" movida`,
+          [],
+        );
+      }
+
       case "add_block": {
         const { stepId, type, props, index, id } = entrada as {
           stepId: string;

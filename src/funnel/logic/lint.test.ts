@@ -112,6 +112,30 @@ describe("lint do funil", () => {
   });
 });
 
+describe("fim marcado no meio do funil", () => {
+  it("aponta a causa, e não só as telas órfãs", () => {
+    // Foi assim que um funil real foi ao ar: oferta marcada como fim, com o
+    // diagnóstico atrás dela — dez perguntas sem nunca mostrar o resultado.
+    const doc = applyOp(base, {
+      type: "update_step",
+      stepId: "step_email",
+      patch: { logic: { rules: [], isEnd: true } },
+    });
+
+    const issues = lintFunnel(doc);
+    expect(temCodigo(issues, "fim_prematuro")).toBe(true);
+
+    const causa = issues.find((i) => i.code === "fim_prematuro")!;
+    expect(causa.severity).toBe("erro");
+    expect(causa.stepId).toBe("step_email");
+    expect(causa.message).toContain("Oferta");
+  });
+
+  it("não reclama de fim na última tela", () => {
+    expect(temCodigo(lintFunnel(base), "fim_prematuro")).toBe(false);
+  });
+});
+
 describe("personalização", () => {
   it("não reclama do funil de exemplo, que varia por pontuação", () => {
     // O template não ramifica, mas os outcomes do resultado têm condição —

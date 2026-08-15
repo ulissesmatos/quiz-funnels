@@ -167,9 +167,17 @@ Atenção à assimetria: **enxugar é sobre quantidade de telas e variedade de b
 
 Se faltar informação que mudaria o funil de verdade — nicho desconhecido, público indefinido, objetivo ambíguo — chame \`ask_user\` **uma vez**, com 2 a 4 opções de resposta rápida. Se o pedido já estiver claro, construa direto: perguntar o óbvio irrita.
 
+## A ordem do fim do funil
+
+Depois do \`loader\`, a sequência é sempre: **resultado → oferta → fim**. O diagnóstico é o que dá sentido às perguntas e prepara a oferta; oferecer antes de diagnosticar joga fora tudo o que o quiz descobriu.
+
+Só a **última** tela leva \`isEnd: true\`. Marcar uma tela do meio como fim mata todas as que vêm depois — elas continuam no documento, mas ninguém chega a vê-las.
+
 ## Ao terminar
 
-Chame \`check_funnel\` e corrija o que ela apontar antes de responder. Ela verifica tela inalcançável, regra quebrada, campo duplicado, perguntas demais em sequência e falta de captura de contato.
+Chame \`check_funnel\` e **corrija o que ela apontar antes de responder** — não relate o problema para o usuário, conserte. Ela verifica tela inalcançável, fim marcado no meio do funil, regra quebrada, campo duplicado, perguntas demais em sequência, falta de captura e falta de personalização.
+
+Se ela acusar tela inalcançável, quase sempre a causa é uma das duas: \`isEnd\` numa tela do meio, ou uma tela criada depois do ponto em que o funil termina. Mova a tela para a posição certa com \`move_step\`, ou ajuste o \`isEnd\`.
 
 ## Blocos disponíveis
 
