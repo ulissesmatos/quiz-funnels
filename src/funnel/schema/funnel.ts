@@ -51,6 +51,20 @@ export const FunnelSettings = z
   .strict();
 
 /**
+ * Onde cada tela fica no canvas de fluxo.
+ *
+ * É a única informação do mapa que precisa ser guardada — nós são as telas e
+ * arestas são as regras, ambos já no documento. Opcional de propósito: sem
+ * posição gravada o mapa se organiza sozinho, e telas criadas pela IA entram
+ * sem coordenada nenhuma.
+ */
+export const FunnelFlow = z
+  .object({
+    positions: z.record(SlugId, z.object({ x: z.number(), y: z.number() }).strict()),
+  })
+  .strict();
+
+/**
  * O documento completo do funil. É o que fica no banco em `jsonb`, o que o
  * editor manipula e o que o copiloto de IA edita por operações.
  */
@@ -68,6 +82,7 @@ export const FunnelDocument = z
     settings: FunnelSettings,
     variables: z.array(FunnelVariable),
     steps: z.array(Step).min(1).describe("A ordem desta lista é o caminho padrão do funil"),
+    flow: FunnelFlow.optional(),
   })
   .strict()
   .superRefine((doc, ctx) => {

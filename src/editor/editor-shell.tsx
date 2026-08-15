@@ -21,12 +21,14 @@ import { cn } from "@/lib/cn";
 
 import { Canvas } from "./canvas";
 import { EditorProvider, useEditorShortcuts, useEditorStore } from "./editor-context";
+import { FlowCanvas } from "./flow/flow-canvas";
 import { Inspector, type Aba as AbaInspector } from "./inspector";
 import { Palette, PALETTE_PREFIX } from "./palette";
 import { StepsPanel } from "./steps-panel";
 import { Topbar } from "./topbar";
 
 type PainelMobile = "canvas" | "estrutura" | "ajustes";
+export type Vista = "construtor" | "fluxo";
 
 export function EditorShell({
   funnelId,
@@ -49,6 +51,7 @@ function EditorLayout({ funnelId }: { funnelId: string }) {
   const [painelMobile, setPainelMobile] = useState<PainelMobile>("canvas");
   const [abaInspector, setAbaInspector] = useState<AbaInspector>("bloco");
   const [arrastando, setArrastando] = useState<string | null>(null);
+  const [vista, setVista] = useState<Vista>("construtor");
 
   const fecharGaveta = () => setPainelMobile("canvas");
 
@@ -117,7 +120,7 @@ function EditorLayout({ funnelId }: { funnelId: string }) {
       modifiers={arrastando?.startsWith(PALETTE_PREFIX) ? [] : [restrictToVerticalAxis]}
     >
       <div className="flex h-dvh flex-col overflow-hidden">
-        <Topbar funnelId={funnelId} />
+        <Topbar funnelId={funnelId} vista={vista} onVistaChange={setVista} />
 
         <div className="relative flex min-h-0 flex-1">
           {/*
@@ -137,7 +140,16 @@ function EditorLayout({ funnelId }: { funnelId: string }) {
           </PainelLateral>
 
           <main className="flex min-w-0 flex-1 flex-col">
-            <Canvas />
+            {vista === "construtor" ? (
+              <Canvas />
+            ) : (
+              <FlowCanvas
+                onAbrirTela={(stepId) => {
+                  store.getState().selectStep(stepId);
+                  setVista("construtor");
+                }}
+              />
+            )}
           </main>
 
           <PainelLateral lado="direita" aberto={painelMobile === "ajustes"} onFechar={fecharGaveta}>

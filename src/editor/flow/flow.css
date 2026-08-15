@@ -1,0 +1,261 @@
+/** Canvas de fluxo. Tudo aqui é `fl-*`. */
+
+.fl-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background: var(--color-app-bg);
+}
+
+.fl-wrap .react-flow__background { color: var(--color-app-border); }
+
+.fl-wrap .react-flow__controls,
+.fl-wrap .react-flow__minimap {
+  background: var(--color-app-surface);
+  border: 1px solid var(--color-app-border);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+/* O minimapa padrão ocupa um quarto da tela; aqui ele é referência, não peça
+   principal. */
+.fl-wrap .react-flow__minimap {
+  width: 168px;
+  height: 108px;
+}
+
+.fl-wrap .react-flow__controls-button {
+  background: var(--color-app-surface);
+  border-bottom: 1px solid var(--color-app-border);
+  color: var(--color-app-muted);
+  fill: currentColor;
+}
+
+.fl-wrap .react-flow__controls-button:hover { background: var(--color-app-surface-2); }
+.fl-wrap .react-flow__minimap-mask { fill: rgb(0 0 0 / 0.55); }
+.fl-wrap .react-flow__minimap-node { fill: var(--color-app-border); }
+
+/* ── Nó ───────────────────────────────────────────────────── */
+
+.fl-node {
+  width: 240px;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--color-app-surface);
+  border: 2px solid var(--color-app-border);
+  color: var(--color-app-text);
+  font-family: var(--font-sans);
+  transition: border-color 120ms ease;
+}
+
+.fl-node:hover { border-color: color-mix(in oklab, var(--color-app-primary) 55%, var(--color-app-border)); }
+.fl-node--selected { border-color: var(--color-app-primary); }
+.fl-node--erro { border-color: var(--color-app-danger); }
+
+.fl-node-head { display: flex; align-items: center; gap: 7px; }
+.fl-node-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; }
+
+.fl-node-index {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--color-app-muted);
+  background: var(--color-app-surface-2);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+
+.fl-node-resumo {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--color-app-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.fl-node-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--color-app-muted);
+}
+
+.fl-node-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--color-app-surface-2);
+}
+
+.fl-node-tag--erro {
+  background: color-mix(in oklab, var(--color-app-danger) 22%, transparent);
+  color: var(--color-app-danger);
+}
+
+.fl-node-abrir {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-app-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.fl-node:hover .fl-node-abrir,
+.fl-node--selected .fl-node-abrir { opacity: 1; }
+
+.fl-node-abrir:hover { background: var(--color-app-surface-2); color: var(--color-app-text); }
+
+.fl-handle {
+  width: 9px;
+  height: 9px;
+  background: var(--color-app-primary);
+  border: 2px solid var(--color-app-surface);
+}
+
+/* ── Arestas ──────────────────────────────────────────────── */
+
+/* O caminho padrão é o "e se nada bater": recessivo, para as ramificações
+   ficarem em primeiro plano. */
+.fl-edge--padrao .react-flow__edge-path {
+  stroke: var(--color-app-border);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 5;
+}
+
+.fl-edge--regra .react-flow__edge-path {
+  stroke: var(--color-app-primary);
+  stroke-width: 2;
+}
+
+.fl-edge--botao .react-flow__edge-path {
+  stroke: var(--color-app-success);
+  stroke-width: 2;
+}
+
+.fl-edge--regra { cursor: pointer; }
+
+.fl-wrap .react-flow__edge-text {
+  fill: var(--color-app-text);
+  font-size: 10px;
+  font-family: var(--font-sans);
+}
+
+.fl-wrap .react-flow__edge-textbg { fill: var(--color-app-bg); }
+
+/* ── Barra de ações e avisos ──────────────────────────────── */
+
+.fl-acoes {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+}
+
+.fl-acao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-app-text);
+  background: var(--color-app-surface);
+  border: 1px solid var(--color-app-border);
+  cursor: pointer;
+}
+
+.fl-acao:hover:not(:disabled) { border-color: var(--color-app-primary); }
+.fl-acao:disabled { opacity: 0.5; cursor: default; }
+
+.fl-alertas {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 9px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-app-danger);
+  background: color-mix(in oklab, var(--color-app-danger) 15%, var(--color-app-surface));
+  border: 1px solid color-mix(in oklab, var(--color-app-danger) 40%, transparent);
+}
+
+/* ── Editor de regra ──────────────────────────────────────── */
+
+.fl-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.5);
+}
+
+.fl-popover {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--color-app-surface);
+  border: 1px solid var(--color-app-border);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.45);
+  font-family: var(--font-sans);
+}
+
+.fl-popover-titulo { margin: 0; font-size: 13px; color: var(--color-app-muted); }
+.fl-popover-titulo strong { color: var(--color-app-text); }
+.fl-popover-vazio { margin: 0; font-size: 13px; line-height: 1.45; color: var(--color-app-muted); }
+
+.fl-campo { display: flex; flex-direction: column; gap: 4px; }
+.fl-campo > span { font-size: 12px; color: var(--color-app-muted); }
+
+.fl-popover-acoes { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+
+.fl-popover-remover {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: auto;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--color-app-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.fl-popover-remover:hover {
+  background: color-mix(in oklab, var(--color-app-danger) 20%, transparent);
+  color: var(--color-app-danger);
+}

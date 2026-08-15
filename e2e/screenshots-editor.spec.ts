@@ -33,6 +33,11 @@ test("captura o editor", async ({ page }, testInfo) => {
   await expect(page.getByRole("heading", { name: "Copiloto" })).toBeVisible();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `screenshots/editor-${nome}-copiloto.png` });
+
+  await page.getByRole("button", { name: "Fluxo" }).click();
+  await expect(page.locator(".fl-node").first()).toBeVisible({ timeout: 30_000 });
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: `screenshots/editor-${nome}-fluxo.png` });
 });
 
 async function selecionarTela(page: Page, nome: string) {

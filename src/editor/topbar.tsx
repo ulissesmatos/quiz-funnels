@@ -5,12 +5,14 @@ import {
   Check,
   CloudAlert,
   ExternalLink,
+  LayoutTemplate,
   Loader2,
   Monitor,
   Redo2,
   Smartphone,
   Undo2,
   UploadCloud,
+  Workflow,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -20,8 +22,17 @@ import { cn } from "@/lib/cn";
 import { publishFunnelAction } from "@/server/funnels/actions";
 
 import { useDocument, useEditor } from "./editor-context";
+import type { Vista } from "./editor-shell";
 
-export function Topbar({ funnelId }: { funnelId: string }) {
+export function Topbar({
+  funnelId,
+  vista,
+  onVistaChange,
+}: {
+  funnelId: string;
+  vista: Vista;
+  onVistaChange: (vista: Vista) => void;
+}) {
   const doc = useDocument();
   const saveStatus = useEditor((s) => s.saveStatus);
   const saveError = useEditor((s) => s.saveError);
@@ -59,7 +70,32 @@ export function Topbar({ funnelId }: { funnelId: string }) {
         <span className="hidden sm:inline">Funis</span>
       </Link>
 
-      <span className="max-w-40 truncate text-sm font-medium">{doc.name}</span>
+      <span className="hidden max-w-40 truncate text-sm font-medium sm:inline">{doc.name}</span>
+
+      {/* Construtor monta a tela; Fluxo mostra como as telas se ligam. */}
+      <div className="flex rounded-lg border border-app-border p-0.5">
+        {(
+          [
+            { chave: "construtor", rotulo: "Construtor", Icone: LayoutTemplate },
+            { chave: "fluxo", rotulo: "Fluxo", Icone: Workflow },
+          ] as const
+        ).map(({ chave, rotulo, Icone }) => (
+          <button
+            key={chave}
+            type="button"
+            onClick={() => onVistaChange(chave)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors",
+              vista === chave
+                ? "bg-app-surface-2 text-app-text"
+                : "text-app-muted hover:text-app-text",
+            )}
+          >
+            <Icone size={14} />
+            <span className="hidden sm:inline">{rotulo}</span>
+          </button>
+        ))}
+      </div>
 
       <StatusDeSalvamento status={saveStatus} erro={saveError} />
 

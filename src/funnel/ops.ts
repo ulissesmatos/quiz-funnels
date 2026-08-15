@@ -4,7 +4,7 @@ import { slugifyId, uniqueId } from "@/lib/slug";
 
 import { getBlockDefinition, isContainer, walkBlocks, type Block, type LeafBlock } from "./schema/block";
 import type { FunnelDocument } from "./schema/funnel";
-import type { Step, StepType } from "./schema/step";
+import type { RoutingRule, Step, StepType } from "./schema/step";
 import type { Theme } from "./schema/theme";
 import { defaultStepLayout } from "./schema/step";
 
@@ -45,7 +45,30 @@ export type FunnelOp =
     }
   | { type: "duplicate_block"; blockId: string }
   | { type: "set_theme"; patch: ThemePatch }
-  | { type: "set_funnel"; patch: FunnelPatch };
+  | { type: "set_funnel"; patch: FunnelPatch }
+  // ── Fluxo ────────────────────────────────────────────────────
+  | { type: "set_flow_position"; stepId: string; x: number; y: number }
+  | { type: "add_rule"; stepId: string; rule: RoutingRule }
+  | { type: "update_rule"; stepId: string; ruleId: string; patch: Partial<RoutingRule> }
+  | { type: "remove_rule"; stepId: string; ruleId: string }
+  | {
+      /**
+       * Gera uma regra por opção de um bloco de escolha.
+       *
+       * Existe como operação própria porque montar condição a condição é onde
+       * o erro acontece — id trocado, operador errado. Aqui basta dizer "esta
+       * opção vai para esta tela"; a condição é construída em código. É o mesmo
+       * caminho do botão "ramificar por resposta" do editor e da ferramenta
+       * `branch_by_answer` do copiloto.
+       */
+      type: "branch_by_answer";
+      stepId: string;
+      /** Bloco de escolha que define as opções; omitido, usa o primeiro da tela. */
+      blockId?: string;
+      branches: { optionId: string; goto: string }[];
+      /** Remove as regras que já existiam antes de gerar as novas. */
+      replace?: boolean;
+    };
 
 export type StepPatch = Partial<Pick<Step, "name" | "type" | "layout" | "logic" | "seo">>;
 
@@ -222,8 +245,90 @@ export function applyOp(doc: FunnelDocument, op: FunnelOp): FunnelDocument {
         Object.assign(draft, op.patch);
         break;
       }
+
+      case "set_flow_position": {
+        if (!draft.steps.some((s) => s.id === op.stepId)) break;
+
+        draft.flow ??= { positions: {} };
+        draft.flow.positions[op.stepId] = { x: Math.round(op.x), y: Math.round(op.y) };
+        break;
+      }
+
+      case "add_rule": {
+        const step = draft.steps.find((s) => s.id === op.stepId);
+        if (!step) break;
+        if (!draft.steps.some((s) => s.id === op.rule.goto)) break;
+
+        const rule = { ...op.rule };
+        rule.id = uniqueId(rule.id, step.logic.rules.map((r) => r.id));
+        step.logic.rules.push(rule);
+        break;
+      }
+
+      case "update_rule": {
+        const step = draft.steps.find((s) => s.id === op.stepId);
+        const rule = step?.logic.rules.find((r) => r.id === op.ruleId);
+        if (!rule) break;
+
+        // Um destino inexistente prenderia o visitante; o resto do patch entra.
+        const { goto, ...resto } = op.patch;
+        Object.assign(rule, resto);
+        if (goto && draft.steps.some((s) => s.id === goto)) rule.goto = goto;
+        break;
+      }
+
+      case "remove_rule": {
+        const step = draft.steps.find((s) => s.id === op.stepId);
+        if (!step) break;
+
+        step.logic.rules = step.logic.rules.filter((r) => r.id !== op.ruleId);
+        break;
+      }
+
+      case "branch_by_answer": {
+        const step = draft.steps.find((s) => s.id === op.stepId);
+        if (!step) break;
+
+        const escolha = encontrarBlocoDeEscolha(step, op.blockId);
+        if (!escolha) break;
+
+        const opcoesValidas = new Set(escolha.props.options.map((o) => o.id));
+        const novas: RoutingRule[] = [];
+
+        for (const branch of op.branches) {
+          if (!opcoesValidas.has(branch.optionId)) continue;
+          if (!draft.steps.some((s) => s.id === branch.goto)) continue;
+
+          novas.push({
+            id: uniqueId(
+              `regra_${escolha.props.name}_${branch.optionId}`,
+              [...step.logic.rules.map((r) => r.id), ...novas.map((r) => r.id)],
+            ),
+            goto: branch.goto,
+            when: {
+              kind: "leaf",
+              ref: { source: "answer", key: escolha.props.name },
+              op: "eq",
+              value: branch.optionId,
+            },
+          });
+        }
+
+        if (novas.length === 0) break;
+
+        step.logic.rules = op.replace ? novas : [...step.logic.rules, ...novas];
+        break;
+      }
     }
   });
+}
+
+function encontrarBlocoDeEscolha(step: Step, blockId?: string) {
+  for (const block of walkBlocks(step.blocks)) {
+    if (block.type !== "choice") continue;
+    if (!blockId || block.id === blockId) return block;
+  }
+  return null;
 }
 
 export function applyOps(doc: FunnelDocument, ops: FunnelOp[]): FunnelDocument {
