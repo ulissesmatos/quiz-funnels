@@ -10,6 +10,7 @@ import { slugify } from "@/lib/slug";
 import { requireOrganization } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { funnels, funnelVersions } from "@/server/db/schema";
+import { getOrganizationSettings } from "@/server/settings/queries";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
@@ -19,7 +20,8 @@ export async function createFunnelAction(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim() || "Funil sem título";
   const slug = await findAvailableSlug(organization.id, slugify(name) || "funil");
 
-  const document = createEmptyFunnel(name, slug);
+  const { defaultThemeMode } = await getOrganizationSettings();
+  const document = createEmptyFunnel(name, slug, defaultThemeMode);
 
   const [created] = await db
     .insert(funnels)

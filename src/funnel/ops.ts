@@ -88,6 +88,8 @@ export type ThemePatch = {
   button?: Partial<Theme["button"]>;
   contentWidth?: number;
   transition?: Theme["transition"];
+  mode?: Theme["mode"];
+  presetId?: Theme["presetId"];
 };
 
 export type FunnelPatch = Partial<Pick<FunnelDocument, "name" | "slug" | "settings" | "variables">>;
@@ -228,7 +230,7 @@ export function applyOp(doc: FunnelDocument, op: FunnelOp): FunnelDocument {
         for (const [group, values] of Object.entries(op.patch)) {
           if (values === undefined) continue;
 
-          if (group === "contentWidth" || group === "transition") {
+          if (group === "contentWidth" || group === "transition" || group === "mode" || group === "presetId") {
             (draft.theme as Record<string, unknown>)[group] = values;
             continue;
           }

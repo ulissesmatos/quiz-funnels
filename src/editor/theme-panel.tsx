@@ -1,8 +1,16 @@
 "use client";
 
-import { defaultTheme, lightTheme, type Theme } from "@/funnel/schema/theme";
+import type { Theme } from "@/funnel/schema/theme";
+import { coresDoPreset, THEME_PRESETS } from "@/funnel/theme/presets";
+import { cn } from "@/lib/cn";
 
 import { useDocument, useEditor } from "./editor-context";
+
+const MODOS: { valor: Theme["mode"]; rotulo: string; dica: string }[] = [
+  { valor: "dark", rotulo: "Escuro", dica: "Fundo escuro, alto contraste" },
+  { valor: "light", rotulo: "Claro", dica: "Fundo claro" },
+  { valor: "auto", rotulo: "Automático", dica: "Segue o sistema de quem visita" },
+];
 
 const CORES: { chave: keyof Theme["colors"]; rotulo: string; dica: string }[] = [
   { chave: "bg", rotulo: "Fundo", dica: "Fundo da página" },
@@ -33,29 +41,81 @@ export function ThemePanel() {
   const dispatch = useEditor((s) => s.dispatch);
   const theme = doc.theme;
 
+  /**
+   * Modo e preset são independentes, mas `colors` continua sendo a paleta já
+   * resolvida (o que de fato renderiza) — trocar qualquer um dos dois
+   * recalcula `colors` a partir do preset atual. No automático a base gravada
+   * é a escura; quem decide claro/escuro de verdade é o navegador de quem
+   * visita (ver `useEffectiveTheme`), isso aqui é só o valor de reserva.
+   */
+  function aplicarModo(modo: Theme["mode"]) {
+    const corDeBase = modo === "light" ? "light" : "dark";
+    dispatch(
+      { type: "set_theme", patch: { mode: modo, colors: coresDoPreset(theme.presetId, corDeBase) } },
+      { label: "Alterar modo do tema" },
+    );
+  }
+
+  function aplicarPreset(presetId: string) {
+    const corDeBase = theme.mode === "light" ? "light" : "dark";
+    dispatch(
+      { type: "set_theme", patch: { presetId, colors: coresDoPreset(presetId, corDeBase) } },
+      { label: "Alterar preset de cor" },
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <section className="flex flex-col gap-2">
+        <h3 className="text-xs font-medium tracking-wide text-app-muted uppercase">Modo</h3>
+        <div className="grid grid-cols-3 gap-2">
+          {MODOS.map(({ valor, rotulo, dica }) => (
+            <button
+              key={valor}
+              type="button"
+              title={dica}
+              className={cn(
+                "rounded-lg border px-2 py-2 text-sm transition-colors",
+                theme.mode === valor
+                  ? "border-app-primary text-app-text"
+                  : "border-app-border text-app-muted hover:border-app-primary/60 hover:text-app-text",
+              )}
+              onClick={() => aplicarModo(valor)}
+            >
+              {rotulo}
+            </button>
+          ))}
+        </div>
+        {theme.mode === "auto" && (
+          <p className="text-[11px] text-app-muted">
+            O funil publicado troca sozinho entre a versão clara e a escura deste preset, conforme
+            o sistema de quem visita.
+          </p>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-2">
         <h3 className="text-xs font-medium tracking-wide text-app-muted uppercase">Presets</h3>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            className="rounded-lg border border-app-border px-3 py-2 text-sm hover:border-app-primary/60"
-            onClick={() =>
-              dispatch({ type: "set_theme", patch: { colors: defaultTheme.colors } }, { label: "Tema escuro" })
-            }
-          >
-            Escuro
-          </button>
-          <button
-            type="button"
-            className="rounded-lg border border-app-border px-3 py-2 text-sm hover:border-app-primary/60"
-            onClick={() =>
-              dispatch({ type: "set_theme", patch: { colors: lightTheme.colors } }, { label: "Tema claro" })
-            }
-          >
-            Claro
-          </button>
+        <div className="grid grid-cols-3 gap-2">
+          {THEME_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={cn(
+                "flex flex-col items-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs transition-colors",
+                theme.presetId === preset.id
+                  ? "border-app-primary text-app-text"
+                  : "border-app-border text-app-muted hover:border-app-primary/60 hover:text-app-text",
+              )}
+              onClick={() => aplicarPreset(preset.id)}
+            >
+              <span
+                className="h-5 w-5 rounded-full border border-white/10"
+                style={{ background: preset.swatch }}
+              />
+              {preset.label}
+            </button>
+          ))}
         </div>
       </section>
 

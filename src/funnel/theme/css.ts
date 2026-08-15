@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 
 import type { ColorValue, RadiusValue, SpaceValue } from "../schema/common";
-import type { Theme } from "../schema/theme";
+import type { Theme, ThemeColors } from "../schema/theme";
+import { coresDoPreset } from "./presets";
 
 /**
  * O tema vira CSS variables no elemento raiz do funil. Todo bloco consome
@@ -45,15 +46,15 @@ const shadows = {
   xl: "0 24px 60px rgba(0,0,0,.32)",
 } as const;
 
-export function themeToCssVars(theme: Theme): CSSProperties {
+export function themeToCssVars(theme: Theme, options?: { skipColors?: boolean }): CSSProperties {
   const vars: Record<string, string> = {};
 
-  for (const token of colorTokens) {
-    vars[`--fn-color-${kebab(token)}`] = theme.colors[token];
+  // No modo automático quem define as cores é o `<style>` de `autoThemeCss`,
+  // via `@media (prefers-color-scheme)` — cor no style inline tem mais
+  // especificidade que a media query e venceria ela sempre.
+  if (!options?.skipColors) {
+    Object.assign(vars, colorVars(theme.colors));
   }
-
-  // Aviso não entra na lista acima porque é opcional no tema.
-  vars["--fn-color-warning"] = theme.colors.warning ?? "#eab308";
 
   for (const token of spaceTokens) {
     vars[`--fn-space-${token}`] = `${theme.spacing[token]}px`;
@@ -119,6 +120,37 @@ export function resolveFontSize(
 
 export function resolveShadow(value: keyof typeof shadows | undefined): string | undefined {
   return value === undefined ? undefined : `var(--fn-shadow-${value})`;
+}
+
+function colorVars(colors: ThemeColors): Record<string, string> {
+  const vars: Record<string, string> = {};
+
+  for (const token of colorTokens) {
+    vars[`--fn-color-${kebab(token)}`] = colors[token];
+  }
+
+  // Aviso não entra no laço acima porque é opcional no tema.
+  vars["--fn-color-warning"] = colors.warning ?? "#eab308";
+
+  return vars;
+}
+
+/**
+ * CSS das cores no modo automático: escuro por padrão, claro sob
+ * `@media (prefers-color-scheme: light)`. Puramente CSS — resolve antes do
+ * primeiro paint e continua funcionando se a pessoa trocar o tema do sistema
+ * com a página aberta, sem depender de nenhum JS rodando primeiro.
+ */
+export function autoThemeCss(presetId: string): string {
+  const declarar = (vars: Record<string, string>) =>
+    Object.entries(vars)
+      .map(([nome, valor]) => `${nome}:${valor};`)
+      .join("");
+
+  const escuro = declarar(colorVars(coresDoPreset(presetId, "dark")));
+  const claro = declarar(colorVars(coresDoPreset(presetId, "light")));
+
+  return `.fn-root{${escuro}}@media (prefers-color-scheme: light){.fn-root{${claro}}}`;
 }
 
 /**

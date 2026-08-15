@@ -86,6 +86,13 @@ export const ThemeButton = z
 
 export const StepTransition = z.enum(["none", "fade", "slide", "slide_up"]);
 
+/**
+ * `light`/`dark` fixam a paleta; `auto` segue a preferência de sistema de
+ * quem visita o funil. Separado do preset: os dois juntos é que decidem qual
+ * das duas paletas (`ThemePreset.light`/`.dark`) vira `colors`.
+ */
+export const ThemeMode = z.enum(["light", "dark", "auto"]);
+
 export const Theme = z
   .object({
     colors: ThemeColors,
@@ -96,11 +103,19 @@ export const Theme = z
     /** Largura máxima do conteúdo em px. Funis convertem melhor estreitos. */
     contentWidth: z.number().min(280).max(1400).default(560),
     transition: StepTransition.default("fade"),
+    mode: ThemeMode.default("dark"),
+    /**
+     * Id do preset em `src/funnel/theme/presets.ts` que gerou `colors`. Guarda
+     * só pra saber qual paleta reaplicar quando o modo muda — `colors` continua
+     * sendo a fonte de verdade pro que renderiza.
+     */
+    presetId: z.string().default("roxo"),
   })
   .strict();
 
 export type Theme = z.infer<typeof Theme>;
 export type ThemeColors = z.infer<typeof ThemeColors>;
+export type ThemeMode = z.infer<typeof ThemeMode>;
 
 /** Tema padrão: escuro, alto contraste — o visual mais comum em funis de alta conversão. */
 export const defaultTheme: Theme = {
@@ -133,6 +148,8 @@ export const defaultTheme: Theme = {
   },
   contentWidth: 560,
   transition: "fade",
+  mode: "dark",
+  presetId: "roxo",
 };
 
 /** Variante clara, oferecida como preset no editor. */
@@ -150,4 +167,5 @@ export const lightTheme: Theme = {
     success: "#16a34a",
     danger: "#dc2626",
   },
+  mode: "light",
 };

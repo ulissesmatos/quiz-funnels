@@ -1,8 +1,9 @@
 import { z } from "zod";
 
+import { coresDoPreset } from "../theme/presets";
 import { SlugId, VariableKey } from "./common";
 import { Step } from "./step";
-import { Theme, defaultTheme } from "./theme";
+import { Theme, defaultTheme, type ThemeMode } from "./theme";
 
 /**
  * Variáveis que não vêm de respostas: parâmetros de URL (UTM, `?nome=`) e
@@ -158,14 +159,20 @@ function findDuplicate(values: string[]): string | undefined {
   return undefined;
 }
 
-/** Documento mínimo válido, usado ao criar um funil novo. */
-export function createEmptyFunnel(name: string, slug: string): FunnelDocument {
+/**
+ * Documento mínimo válido, usado ao criar um funil novo.
+ *
+ * `mode` vem da preferência padrão da organização (ver Configurações) — o
+ * preset continua "roxo", só a paleta clara/escura muda; a pessoa troca os
+ * dois depois, na aba Tema.
+ */
+export function createEmptyFunnel(name: string, slug: string, mode: ThemeMode = "dark"): FunnelDocument {
   return {
     schemaVersion: 1,
     name,
     slug,
     locale: "pt-BR",
-    theme: defaultTheme,
+    theme: { ...defaultTheme, mode, colors: coresDoPreset("roxo", mode) },
     settings: {
       seo: {},
       pixels: {},

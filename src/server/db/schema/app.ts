@@ -82,6 +82,22 @@ export const funnelDomains = pgTable(
   (t) => [index("funnel_domains_funnel_idx").on(t.funnelId)],
 );
 
+/**
+ * Uma linha por organização. Hoje só guarda o modo de tema padrão pra funil
+ * novo — separado de `organization` (tabela do Better Auth, não renomear/
+ * reaproveitar colunas dela) pra não misturar dado de auth com preferência
+ * do produto.
+ */
+export const organizationSettings = pgTable("organization_settings", {
+  organizationId: text("organization_id")
+    .primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  defaultThemeMode: text("default_theme_mode", { enum: ["light", "dark", "auto"] })
+    .default("dark")
+    .notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 /** Arquivos enviados pelo usuário, guardados no S3/MinIO. */
 export const assets = pgTable(
   "assets",

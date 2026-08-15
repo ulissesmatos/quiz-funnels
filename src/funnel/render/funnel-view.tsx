@@ -9,7 +9,7 @@ import { computeScores } from "../logic/scoring";
 import { walkBlocks, type Block } from "../schema/block";
 import type { FunnelDocument } from "../schema/funnel";
 import type { Step } from "../schema/step";
-import { themeToCssVars } from "../theme/css";
+import { autoThemeCss, themeToCssVars } from "../theme/css";
 import { safeHref } from "./rich-text";
 import { FunnelRuntimeProvider, type FunnelRuntime } from "./runtime-context";
 import { StepView } from "./step-view";
@@ -223,8 +223,20 @@ export function FunnelView({
 
   if (!step) return null;
 
+  // No automático, quem decide claro/escuro é o `@media (prefers-color-scheme)`
+  // do <style> abaixo — puramente CSS, sem depender de JS rodar primeiro, então
+  // não existe frame com a cor errada. Por isso as variáveis de cor saem do
+  // style inline aqui (`skipColors`): inline venceria a media query.
+  const modoAutomatico = doc.theme.mode === "auto";
+
   return (
-    <div className="fn-root" style={themeToCssVars(doc.theme)} data-completed={completed}>
+    <div
+      className="fn-root"
+      style={themeToCssVars(doc.theme, { skipColors: modoAutomatico })}
+      data-completed={completed}
+    >
+      {modoAutomatico && <style>{autoThemeCss(doc.theme.presetId)}</style>}
+
       <FunnelRuntimeProvider value={runtime}>
         <StepView step={step} theme={doc.theme} transition={doc.theme.transition} />
 

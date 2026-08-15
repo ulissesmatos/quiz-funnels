@@ -1,4 +1,4 @@
-import { LayoutGrid, Users } from "lucide-react";
+import { LayoutGrid, Settings, Users } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -25,6 +25,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </NavLink>
           <NavLink href="/leads" icon={<Users size={16} />}>
             Leads
+          </NavLink>
+          <NavLink href="/configuracoes" icon={<Settings size={16} />}>
+            Configurações
           </NavLink>
         </nav>
 

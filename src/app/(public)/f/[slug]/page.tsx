@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { FunnelView } from "@/funnel/render/funnel-view";
 import { parseFunnelDocument } from "@/funnel/schema";
 import { customFontFaces, googleFontsHref } from "@/funnel/theme/css";
+import { coresDoPreset } from "@/funnel/theme/presets";
 import { getPublishedFunnelBySlug } from "@/server/funnels/queries";
 
 type PageProps = {
@@ -53,6 +54,15 @@ export default async function FunnelPublicPage({ params, searchParams }: PagePro
   const fontsHref = googleFontsHref(doc.theme);
   const fontFaces = customFontFaces(doc.theme);
 
+  // Igual ao `.fn-root` em `autoThemeCss`: no automático o fundo do body
+  // também precisa da media query, senão ele fica preso na cor de reserva
+  // enquanto o conteúdo do funil já trocou.
+  const corDoBody =
+    doc.theme.mode === "auto"
+      ? `body{background:${coresDoPreset(doc.theme.presetId, "dark").bg};}` +
+        `@media (prefers-color-scheme: light){body{background:${coresDoPreset(doc.theme.presetId, "light").bg};}}`
+      : `body{background:${doc.theme.colors.bg};}`;
+
   return (
     <>
       {fontsHref && (
@@ -65,7 +75,7 @@ export default async function FunnelPublicPage({ params, searchParams }: PagePro
 
       {/* O `body` vem do layout raiz com o tema escuro do app; aqui ele passa a
           acompanhar o tema do funil, senão as bordas de overscroll destoam. */}
-      <style>{`body{background:${doc.theme.colors.bg};}${fontFaces}`}</style>
+      <style>{`${corDoBody}${fontFaces}`}</style>
 
       <FunnelView document={doc} searchParams={query} />
     </>
