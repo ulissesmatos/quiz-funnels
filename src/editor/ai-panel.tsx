@@ -2,7 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { AlertCircle, ArrowUp, Loader2, Sparkles, Square } from "lucide-react";
+import { AlertCircle, ArrowUp, Brain, Loader2, Sparkles, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { aplicarChamadaDaIa } from "@/funnel/ai/apply";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { saveFunnelDocumentAction } from "@/server/funnels/actions";
 
 import type { AiPrefill } from "./ai-kickoff";
+import { ChatMarkdown } from "./chat-markdown";
 import { useEditor, useEditorStore } from "./editor-context";
 
 const SUGESTOES = [
@@ -38,6 +39,9 @@ export function AiPanel({
   const funnelId = useEditor((s) => s.funnelId);
   const [erroLocal, setErroLocal] = useState<string | null>(null);
   const [texto, setTexto] = useState("");
+  // Modo cuidadoso: persiste entre mensagens (não é um flag de disparo único)
+  // até a pessoa desligar de propósito.
+  const [capricho, setCapricho] = useState(false);
 
   /** Chamadas já aplicadas, por `toolCallId`. */
   const aplicadas = useRef(new Set<string>());
@@ -127,27 +131,18 @@ export function AiPanel({
     }
     store.getState().setSaveStatus("salvo");
 
-    sendMessage({ text: conteudo });
+    sendMessage({ text: conteudo }, { body: { thorough: capricho } });
   }
 
-  // Atalho "Personalizar com IA" do fluxo: só preenche o campo, e só se
-  // estiver vazio, pra não sobrescrever um rascunho em andamento. Pedido feito
-  // no modal de criação do funil: preenche e já dispara sozinho — é o que
-  // "começa a rodar a solicitação automaticamente" quer dizer.
+  // Pedido feito no modal de criação do funil: preenche e já dispara sozinho,
+  // sem esperar clique — chega aqui via `sessionStorage` (ver `ai-kickoff.ts`).
   useEffect(() => {
     if (!prefill) return;
+    if (autoEnviado.current === prefill.texto) return; // já disparado (StrictMode)
 
-    if (prefill.autoEnviar) {
-      if (autoEnviado.current === prefill.texto) return; // já disparado (StrictMode)
-      autoEnviado.current = prefill.texto;
-      onPrefillConsumed?.();
-      void enviar(prefill.texto);
-      return;
-    }
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza com um sinal externo (prop), não com outro estado local
-    setTexto((atual) => (atual.trim() ? atual : prefill.texto));
+    autoEnviado.current = prefill.texto;
     onPrefillConsumed?.();
+    void enviar(prefill.texto);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefill]);
 
@@ -198,6 +193,24 @@ export function AiPanel({
       </div>
 
       <div className="relative shrink-0 border-t border-app-border p-2.5">
+        <div className="mb-1.5 flex items-center px-0.5">
+          <button
+            type="button"
+            onClick={() => setCapricho((atual) => !atual)}
+            aria-pressed={capricho}
+            title="Modo cuidadoso: planeja tudo antes de construir e pensa mais — demora mais, erra menos"
+            className={cn(
+              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
+              capricho
+                ? "border-app-primary bg-app-primary/15 text-app-primary"
+                : "border-app-border text-app-muted hover:text-app-text",
+            )}
+          >
+            <Brain size={12} />
+            Capricho
+          </button>
+        </div>
+
         {perguntaPendente && (
           <PopupDePergunta
             pergunta={perguntaPendente.input}
@@ -299,7 +312,9 @@ function PopupDePergunta({
 
   return (
     <div className="absolute right-2.5 bottom-full left-2.5 z-10 mb-2 rounded-xl border border-app-primary/60 bg-app-surface p-3 shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
-      <p className="mb-2.5 text-sm leading-snug">{pergunta.question}</p>
+      <div className="mb-2.5 text-sm leading-snug">
+        <ChatMarkdown text={pergunta.question} />
+      </div>
 
       <div className="flex flex-wrap gap-1.5">
         {pergunta.options.map((opcao) => (
@@ -366,11 +381,7 @@ function Mensagem({ message }: { message: { role: string; parts: { type: string 
         if (part.type === "text") {
           const texto = (part as unknown as { text: string }).text;
           if (!texto.trim()) return null;
-          return (
-            <p key={index} className="text-sm leading-relaxed whitespace-pre-wrap">
-              {texto}
-            </p>
-          );
+          return <ChatMarkdown key={index} text={texto} />;
         }
 
         if (part.type.startsWith("tool-")) {
@@ -379,13 +390,14 @@ function Mensagem({ message }: { message: { role: string; parts: { type: string 
             output?: { ok?: boolean; resumo?: string; erro?: string };
           };
 
+          const falhou = chamada.output?.ok === false;
+
+          // O erro técnico (validação de schema, id que não existe) volta
+          // pro modelo corrigir na próxima chamada — não serve pra quem está
+          // lendo o chat. Aqui mostramos só que algo foi ajustado.
           const rotulo =
             chamada.output?.resumo ??
-            chamada.output?.erro ??
-            RÓTULOS_DE_FERRAMENTA[part.type.slice("tool-".length)] ??
-            "Editando";
-
-          const falhou = chamada.output?.ok === false;
+            (falhou ? "Ajustando um detalhe" : RÓTULOS_DE_FERRAMENTA[part.type.slice("tool-".length)] ?? "Editando");
           const rodando = chamada.state === "input-streaming" || chamada.state === "input-available";
 
           return (
@@ -425,4 +437,6 @@ const RÓTULOS_DE_FERRAMENTA: Record<string, string> = {
   check_funnel: "Conferindo o funil",
   ask_user: "Aguardando sua resposta",
   set_theme: "Ajustando o tema",
+  submit_plan: "Planejando o funil",
+  set_variables: "Definindo variáveis",
 };

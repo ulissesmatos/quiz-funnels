@@ -6,6 +6,4 @@
  */
 export const AI_KICKOFF_STORAGE_KEY = "funil:ia-ao-criar";
 
-/** `autoEnviar` distingue o atalho do fluxo (só preenche o campo) do pedido
- *  feito ao criar o funil (preenche e já dispara, sem esperar clique). */
-export type AiPrefill = { texto: string; autoEnviar: boolean };
+export type AiPrefill = { texto: string };

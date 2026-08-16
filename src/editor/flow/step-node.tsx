@@ -1,7 +1,7 @@
 "use client";
 
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { AlertCircle, EyeOff, PencilLine, Sparkles, Split } from "lucide-react";
+import { AlertCircle, EyeOff, Loader2, PencilLine, Sparkles, Split } from "lucide-react";
 
 import { Icon } from "@/components/ui/icon";
 import { walkBlocks } from "@/funnel/schema/block";
@@ -18,7 +18,7 @@ import { corDeOrigem, type StepNodeData } from "./graph";
  * lint encontrou nela.
  */
 export function StepNode({ data, selected }: NodeProps & { data: StepNodeData }) {
-  const { step, index, resumo, problemas, condicionaisCount } = data;
+  const { step, index, resumo, problemas, condicionaisCount, personalizando } = data;
 
   const temErro = problemas.some((p) => p.severity === "erro");
   const ramificacoes = step.logic.rules.length;
@@ -41,15 +41,18 @@ export function StepNode({ data, selected }: NodeProps & { data: StepNodeData })
         {data.onFocarIa && (
           <button
             type="button"
-            className="fl-node-abrir"
-            aria-label={`Personalizar "${step.name}" com o copiloto`}
-            title="Personalizar com IA"
+            className={cn("fl-node-abrir", personalizando && "fl-node-abrir--ativo")}
+            aria-label={
+              personalizando ? `Personalizando "${step.name}"…` : `Personalizar "${step.name}" com IA`
+            }
+            title={personalizando ? "Personalizando…" : "Personalizar com IA"}
+            disabled={personalizando}
             onClick={(evento) => {
               evento.stopPropagation();
               data.onFocarIa!(step.id);
             }}
           >
-            <Sparkles size={12} />
+            {personalizando ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
           </button>
         )}
 

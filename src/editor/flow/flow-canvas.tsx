@@ -29,6 +29,7 @@ import { FlowLegend } from "./flow-legend";
 import { autoLayout, buildGraph, stepsSemPosicao, type FlowEdgeData, type StepNodeData } from "./graph";
 import { RuleEditor } from "./rule-editor";
 import { StepNode } from "./step-node";
+import { usePersonalizeWithAi } from "./use-personalize-with-ai";
 
 import "@xyflow/react/dist/style.css";
 import "./flow.css";
@@ -44,27 +45,15 @@ type EdicaoDeRegra = {
   condicao?: Condition;
 };
 
-export function FlowCanvas({
-  onAbrirTela,
-  onPedirIa,
-}: {
-  onAbrirTela: (stepId: string) => void;
-  onPedirIa?: (texto: string) => void;
-}) {
+export function FlowCanvas({ onAbrirTela }: { onAbrirTela: (stepId: string) => void }) {
   return (
     <ReactFlowProvider>
-      <FlowInterno onAbrirTela={onAbrirTela} onPedirIa={onPedirIa} />
+      <FlowInterno onAbrirTela={onAbrirTela} />
     </ReactFlowProvider>
   );
 }
 
-function FlowInterno({
-  onAbrirTela,
-  onPedirIa,
-}: {
-  onAbrirTela: (stepId: string) => void;
-  onPedirIa?: (texto: string) => void;
-}) {
+function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void }) {
   const doc = useDocument();
   const store = useEditorStore();
   const dispatch = useEditor((s) => s.dispatch);
@@ -88,19 +77,13 @@ function FlowInterno({
     if (fechada === "1") setPainelAberto(null);
   }, []);
 
-  const onFocarIa = useCallback(
-    (stepId: string) => {
-      if (!onPedirIa) return;
-      const step = doc.steps.find((s) => s.id === stepId);
-      if (!step) return;
-      onPedirIa(`Personalize a tela "${step.name}" pelas respostas do usuário.`);
-    },
-    [doc, onPedirIa],
-  );
+  const { personalizar, stepAtivo: stepPersonalizando, erro: erroPersonalizar } = usePersonalizeWithAi();
+
+  const onFocarIa = useCallback((stepId: string) => personalizar(stepId), [personalizar]);
 
   const grafo = useMemo(
-    () => buildGraph(doc, onAbrirTela, onFocarIa),
-    [doc, onAbrirTela, onFocarIa],
+    () => buildGraph(doc, onAbrirTela, onFocarIa, stepPersonalizando),
+    [doc, onAbrirTela, onFocarIa, stepPersonalizando],
   );
   const problemas = useMemo(() => lintFunnel(doc), [doc]);
 
@@ -335,6 +318,13 @@ function FlowInterno({
         <div className="fl-alertas" role="status">
           <AlertCircle size={13} />
           {erros.length === 1 ? "1 problema no fluxo" : `${erros.length} problemas no fluxo`}
+        </div>
+      )}
+
+      {erroPersonalizar && (
+        <div className="fl-erro-ia" role="alert">
+          <AlertCircle size={13} />
+          {erroPersonalizar}
         </div>
       )}
 

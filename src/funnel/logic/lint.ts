@@ -28,7 +28,8 @@ export type FunnelIssue = {
     | "tela_vazia"
     | "sem_personalizacao"
     | "fim_prematuro"
-    | "ctas_simultaneos";
+    | "ctas_simultaneos"
+    | "oferta_pouco_trabalhada";
   message: string;
   stepId?: string;
   blockId?: string;
@@ -43,8 +44,45 @@ const MAX_PERGUNTAS_SEGUIDAS = 3;
  * Um funil curto pode ser linear de propósito. Mas quem responde seis perguntas
  * e recebe exatamente o mesmo final que todo mundo percebe que as respostas não
  * serviram para nada — e o funil perde a razão de existir.
+ *
+ * Exportada porque `submit_plan` (copiloto, modo capricho) usa o mesmo limiar
+ * para decidir se o plano precisa detalhar a oferta final antes de ser aceito.
  */
-const MIN_PERGUNTAS_PARA_EXIGIR_PERSONALIZACAO = 4;
+export const MIN_PERGUNTAS_PARA_EXIGIR_PERSONALIZACAO = 4;
+
+/**
+ * Abaixo disso, a tela de oferta final não teve capricho de verdade.
+ *
+ * Exportada pelo mesmo motivo de `MIN_PERGUNTAS_PARA_EXIGIR_PERSONALIZACAO`:
+ * `submit_plan` valida a riqueza da oferta planejada com o mesmo número que
+ * este lint cobra do documento final — um só limiar, não dois que podem
+ * divergir.
+ */
+export const MIN_BLOCOS_TELA_OFERTA = 5;
+
+/**
+ * Repertório de fechamento — mesmo vocabulário da seção "A última tela é a
+ * mais trabalhada do funil" em `prompt.ts`. Compartilhado entre o prompt e
+ * este lint de propósito: os dois têm que cobrar exatamente a mesma coisa, ou
+ * a IA vê uma exigência no texto e outra na ferramenta.
+ */
+const BLOCOS_DE_FECHAMENTO = new Set([
+  "pricing",
+  "guarantee",
+  "testimonials",
+  "marquee",
+  "faq",
+  "countdown",
+  "terms",
+]);
+
+/** A lista de tipos de bloco de uma tela tem pelo menos um bloco de fechamento? */
+export function temVariedadeDeFechamento(tipos: Iterable<string>): boolean {
+  for (const tipo of tipos) {
+    if (BLOCOS_DE_FECHAMENTO.has(tipo)) return true;
+  }
+  return false;
+}
 
 export function lintFunnel(doc: FunnelDocument): FunnelIssue[] {
   const issues: FunnelIssue[] = [];
@@ -225,6 +263,7 @@ export function lintFunnel(doc: FunnelDocument): FunnelIssue[] {
   }
 
   issues.push(...verificarPersonalizacao(doc));
+  issues.push(...verificarOfertaFinal(doc));
 
   return issues;
 }
@@ -298,6 +337,35 @@ function verificarPersonalizacao(doc: FunnelDocument): FunnelIssue[] {
       severity: "aviso",
       code: "sem_personalizacao",
       message: `O funil faz ${perguntas} perguntas mas nada nele muda conforme as respostas: todo mundo vê as mesmas telas e o mesmo final. Escolha ao menos um caminho — ramifique uma pergunta com branch_by_answer, dê pontuação às opções e condicione os resultados, ou torne blocos condicionais com set_block_visibility.`,
+    },
+  ];
+}
+
+/**
+ * A tela de oferta (`type: "checkout"`) recebeu capricho de verdade?
+ *
+ * Só cobra isto de funis que já passariam no limiar de `verificarPersonalizacao`
+ * — um funil curto pode ter uma oferta simples de propósito. Mas um funil longo
+ * o bastante para exigir personalização também é longo o bastante para merecer
+ * uma oferta final trabalhada: é a tela que capitaliza tudo o que as perguntas
+ * anteriores descobriram, e "heading + texto + botão" joga isso fora.
+ */
+function verificarOfertaFinal(doc: FunnelDocument): FunnelIssue[] {
+  const perguntas = doc.steps.filter((s) => s.type === "question" && temEntrada(s.blocks)).length;
+  if (perguntas < MIN_PERGUNTAS_PARA_EXIGIR_PERSONALIZACAO) return [];
+
+  const final = doc.steps.find((s) => s.logic.isEnd) ?? doc.steps.at(-1);
+  if (!final || final.type !== "checkout") return [];
+
+  const tipos = Array.from(walkBlocks(final.blocks)).map((b) => b.type);
+  if (tipos.length >= MIN_BLOCOS_TELA_OFERTA && temVariedadeDeFechamento(tipos)) return [];
+
+  return [
+    {
+      severity: "aviso",
+      code: "oferta_pouco_trabalhada",
+      stepId: final.id,
+      message: `A tela de oferta "${final.name}" tem só ${tipos.length} bloco(s) e pouca variedade de fechamento — é a tela mais importante do funil e não pode ser a mais rasa. Inclua pelo menos ${MIN_BLOCOS_TELA_OFERTA} blocos, com pelo menos um de pricing, guarantee, testimonials, marquee, faq, countdown ou terms.`,
     },
   ];
 }

@@ -59,8 +59,7 @@ export function Inspector({
 
       {/* O copiloto tem rolagem própria e ocupa a altura toda. Fica sempre
           montado (só escondido por CSS) para a conversa não se perder toda
-          vez que a pessoa troca de aba — o atalho "Personalizar com IA" do
-          fluxo perderia a graça se voltar sempre para um chat vazio. */}
+          vez que a pessoa troca de aba. */}
       <div className={cn("min-h-0 flex-1", aba !== "ia" && "hidden")}>
         <AiPanel prefill={aiPrefill} onPrefillConsumed={onAiPrefillConsumed} />
       </div>

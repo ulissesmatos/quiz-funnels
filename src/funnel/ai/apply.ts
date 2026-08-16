@@ -1,11 +1,17 @@
-import { slugifyId } from "@/lib/slug";
+import { slugifyId, uniqueId } from "@/lib/slug";
 
-import { lintFunnel, resumirIssues } from "../logic/lint";
+import {
+  lintFunnel,
+  MIN_BLOCOS_TELA_OFERTA,
+  MIN_PERGUNTAS_PARA_EXIGIR_PERSONALIZACAO,
+  resumirIssues,
+  temVariedadeDeFechamento,
+} from "../logic/lint";
 import { applyOp, collectAnswerNames, collectBlockIds, createStep, findBlock, type FunnelOp } from "../ops";
-import { getBlockDefinition, walkBlocks, type Block } from "../schema/block";
+import { getBlockDefinition, isContainer, walkBlocks, type Block } from "../schema/block";
 import type { Condition } from "../schema/common";
 import type { FunnelDocument } from "../schema/funnel";
-import type { Step } from "../schema/step";
+import type { Step, StepType } from "../schema/step";
 import type { StepPatch, ThemePatch } from "../ops";
 import type { AiCondition, AiToolName } from "./tools";
 
@@ -162,6 +168,7 @@ export function aplicarChamadaDaIa(
         const block = { id: blockId, type, props: validacao.data } as Block;
 
         garantirNomeUnicoDeCampo(doc, block);
+        garantirBlocosUnicosDoContainer(doc, block);
 
         return concluir(
           doc,
@@ -380,6 +387,60 @@ export function aplicarChamadaDaIa(
         return concluir(doc, { type: "set_theme", patch }, "Tema atualizado", []);
       }
 
+      case "submit_plan": {
+        const { screens } = entrada as {
+          screens: { name: string; type: StepType; purpose: string; blocks: string[]; personalization?: string }[];
+        };
+
+        // Mesmo critério de `temEntrada`/`verificarOfertaFinal` em lint.ts, só
+        // que sobre a lista de tipos de bloco do plano — o documento ainda nem
+        // existe.
+        const perguntas = screens.filter(
+          (s) => s.type === "question" && (s.blocks.includes("choice") || s.blocks.includes("input")),
+        ).length;
+
+        if (perguntas >= MIN_PERGUNTAS_PARA_EXIGIR_PERSONALIZACAO) {
+          const oferta = [...screens].reverse().find((s) => s.type === "checkout");
+
+          if (
+            oferta &&
+            (oferta.blocks.length < MIN_BLOCOS_TELA_OFERTA || !temVariedadeDeFechamento(oferta.blocks))
+          ) {
+            return {
+              ok: false,
+              error: `A tela de oferta "${oferta.name}" do plano tem só ${oferta.blocks.length} bloco(s) e pouca variedade de fechamento — um funil com ${perguntas} perguntas precisa de uma oferta à altura. Replaneje com pelo menos ${MIN_BLOCOS_TELA_OFERTA} blocos, incluindo pricing, guarantee e mais um de prova ou objeção (testimonials, marquee, faq, countdown ou terms).`,
+            };
+          }
+        }
+
+        // Não muda o documento — o plano só destrava as demais ferramentas no
+        // modo cuidadoso (ver `prepareStep` em route.ts).
+        return {
+          ok: true,
+          doc,
+          resumo: `Plano aceito: ${screens.length} tela(s).`,
+          blocosTocados: [],
+        };
+      }
+
+      case "set_variables": {
+        const { variables } = entrada as {
+          variables: { key: string; label?: string; source: "query" | "constant"; defaultValue?: string }[];
+        };
+
+        // Substitui por `key`, sem apagar variáveis declaradas em turnos
+        // anteriores da mesma conversa.
+        const porChave = new Map(doc.variables.map((v) => [v.key, v]));
+        for (const variavel of variables) porChave.set(variavel.key, variavel);
+
+        return concluir(
+          doc,
+          { type: "set_funnel", patch: { variables: [...porChave.values()] } },
+          `Variáveis atualizadas (${porChave.size})`,
+          [],
+        );
+      }
+
       default:
         return { ok: false, error: `Ferramenta desconhecida: ${nome}` };
     }
@@ -444,6 +505,31 @@ function garantirNomeUnicoDeCampo(doc: FunnelDocument, block: Block) {
     if (!usados.has(candidato)) {
       block.props.name = candidato;
       return;
+    }
+  }
+}
+
+/**
+ * Um container pode chegar com `children` já populado — a IA monta colunas
+ * inteiras numa chamada só de `add_block`. `escolherId`/`garantirNomeUnicoDeCampo`
+ * acima só cobrem o bloco de nível raiz: sem isto, dois filhos do mesmo
+ * container com o mesmo id ou o mesmo nome de campo colidiriam em silêncio —
+ * `findBlock` acha só o primeiro, e o segundo vira inalcançável por qualquer
+ * `update_block`/`remove_block` futuro que tente chegar nele pelo id duplicado.
+ */
+function garantirBlocosUnicosDoContainer(doc: FunnelDocument, block: Block) {
+  if (!isContainer(block)) return;
+
+  const idsUsados = collectBlockIds(doc);
+  const nomesUsados = collectAnswerNames(doc);
+
+  for (const child of block.props.children) {
+    child.id = uniqueId(child.id, idsUsados);
+    idsUsados.add(child.id);
+
+    if (child.type === "choice" || child.type === "input") {
+      child.props.name = uniqueId(child.props.name, nomesUsados);
+      nomesUsados.add(child.props.name);
     }
   }
 }

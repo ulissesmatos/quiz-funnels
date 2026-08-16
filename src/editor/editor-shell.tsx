@@ -77,15 +77,8 @@ function EditorLayout({ funnelId }: { funnelId: string }) {
     window.sessionStorage.removeItem(AI_KICKOFF_STORAGE_KEY);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- leitura única de estado externo (sessionStorage)
     setAbaInspector("ia");
-    setAiPrefill({ texto: pedido, autoEnviar: true });
+    setAiPrefill({ texto: pedido });
   }, []);
-
-  /** Atalho "Personalizar com IA" de um card do fluxo: leva direto pro chat. */
-  function pedirIaComContexto(texto: string) {
-    setAbaInspector("ia");
-    setAiPrefill({ texto, autoEnviar: false });
-    setPainelMobile("ajustes");
-  }
 
   /**
    * `distance`/`delay` evitam que um toque para selecionar vire um arrasto
@@ -210,7 +203,6 @@ function EditorLayout({ funnelId }: { funnelId: string }) {
                   store.getState().selectStep(stepId);
                   setVista("construtor");
                 }}
-                onPedirIa={pedirIaComContexto}
               />
             )}
           </main>

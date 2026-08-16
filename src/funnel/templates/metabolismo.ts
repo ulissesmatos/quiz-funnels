@@ -620,6 +620,39 @@ export const metabolismoTemplate: FunnelDocument = {
           style: { marginBottom: "lg" },
         },
         {
+          id: "blk_depoimentos_oferta",
+          type: "testimonials",
+          props: {
+            items: [
+              {
+                name: "Camila Rocha",
+                handle: "@camila.rocha",
+                text: "Em três semanas parei de sentir aquele cansaço depois do almoço — e a balança finalmente andou.",
+                rating: 5,
+              },
+              {
+                name: "Diego Fontes",
+                handle: "@diego.fontes",
+                text: "Já tinha tentado várias dietas. A diferença foi ter um plano que respeitava minha rotina de verdade.",
+                rating: 5,
+              },
+            ],
+            layout: "stack",
+            showRating: true,
+          },
+          style: { marginBottom: "lg" },
+        },
+        {
+          id: "blk_garantia_oferta",
+          type: "guarantee",
+          props: {
+            days: 7,
+            title: "Garantia incondicional de 7 dias",
+            text: "Não sentiu diferença nos primeiros 7 dias? Devolvemos 100% do valor, sem perguntas.",
+          },
+          style: { marginBottom: "lg" },
+        },
+        {
           id: "blk_botao_oferta",
           type: "button",
           props: {

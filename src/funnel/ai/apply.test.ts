@@ -75,6 +75,46 @@ describe("aplicação de chamadas da IA", () => {
     expect(resultado.ok).toBe(false);
   });
 
+  it("layout 'emoji' exige emoji em toda opção", () => {
+    const semEmoji = aplicarChamadaDaIa(base, "add_block", {
+      stepId: "step_inicio",
+      type: "choice",
+      props: {
+        name: "pergunta_emoji",
+        multiple: false,
+        layout: "emoji",
+        autoAdvance: true,
+        required: true,
+        showLetters: false,
+        options: [
+          { id: "a", label: "Opção A", emoji: "🔥" },
+          { id: "b", label: "Opção B" }, // sem emoji
+        ],
+      },
+    });
+    expect(semEmoji.ok).toBe(false);
+    if (semEmoji.ok) return;
+    expect(semEmoji.error).toContain("emoji");
+
+    const comEmoji = aplicarChamadaDaIa(base, "add_block", {
+      stepId: "step_inicio",
+      type: "choice",
+      props: {
+        name: "pergunta_emoji",
+        multiple: false,
+        layout: "emoji",
+        autoAdvance: true,
+        required: true,
+        showLetters: false,
+        options: [
+          { id: "a", label: "Opção A", emoji: "🔥" },
+          { id: "b", label: "Opção B", emoji: "❄️" },
+        ],
+      },
+    });
+    expect(comEmoji.ok, comEmoji.ok ? "" : comEmoji.error).toBe(true);
+  });
+
   it("recusa uma tela que não existe", () => {
     const resultado = aplicarChamadaDaIa(base, "add_block", {
       stepId: "step_inventado",
@@ -408,6 +448,169 @@ describe("autoconferência", () => {
   });
 });
 
+describe("submit_plan (modo cuidadoso)", () => {
+  const telaBasica = { name: "Tela", type: "content" as const, purpose: "Teste", blocks: ["heading"] };
+
+  function perguntas(n: number) {
+    return Array.from({ length: n }, (_, i) => ({
+      name: `Pergunta ${i + 1}`,
+      type: "question" as const,
+      purpose: "Coleta uma resposta",
+      blocks: ["progress", "heading", "choice"],
+    }));
+  }
+
+  it("aceita um plano pequeno, de uma tela só, sem exigir oferta robusta", () => {
+    const resultado = aplicarChamadaDaIa(base, "submit_plan", {
+      screens: [telaBasica],
+      scoring: "Nenhuma pontuação nova.",
+      personalizationSummary: "Nenhuma mudança de personalização neste ajuste.",
+    });
+
+    expect(resultado.ok, resultado.ok ? "" : resultado.error).toBe(true);
+    if (resultado.ok) expect(resultado.doc).toBe(base); // não muda o documento
+  });
+
+  it("recusa um plano com 4+ perguntas e oferta rasa, com erro acionável", () => {
+    const resultado = aplicarChamadaDaIa(base, "submit_plan", {
+      screens: [
+        ...perguntas(4),
+        { name: "Oferta", type: "checkout" as const, purpose: "Vender", blocks: ["heading", "text", "button"] },
+      ],
+      scoring: "Cada pergunta soma 1 ponto.",
+      personalizationSummary: "Resultado varia por pontuação.",
+    });
+
+    expect(resultado.ok).toBe(false);
+    if (resultado.ok) return;
+    expect(resultado.error).toContain("oferta");
+  });
+
+  it("aceita um plano com 4+ perguntas quando a oferta planejada é robusta", () => {
+    const resultado = aplicarChamadaDaIa(base, "submit_plan", {
+      screens: [
+        ...perguntas(4),
+        {
+          name: "Oferta",
+          type: "checkout" as const,
+          purpose: "Vender",
+          blocks: ["heading", "text", "pricing", "guarantee", "testimonials"],
+        },
+      ],
+      scoring: "Cada pergunta soma 1 ponto.",
+      personalizationSummary: "Resultado varia por pontuação.",
+    });
+
+    expect(resultado.ok, resultado.ok ? "" : resultado.error).toBe(true);
+  });
+});
+
+describe("set_variables", () => {
+  it("declara variáveis novas sem apagar as existentes do documento", () => {
+    const comUtm = aplicarChamadaDaIa(base, "set_variables", {
+      variables: [{ key: "utm_source", source: "query" }],
+    });
+    expect(comUtm.ok, comUtm.ok ? "" : comUtm.error).toBe(true);
+    if (!comUtm.ok) return;
+
+    const comSegunda = aplicarChamadaDaIa(comUtm.doc, "set_variables", {
+      variables: [{ key: "campanha", source: "constant", defaultValue: "verao" }],
+    });
+    expect(comSegunda.ok, comSegunda.ok ? "" : comSegunda.error).toBe(true);
+    if (!comSegunda.ok) return;
+
+    const chaves = comSegunda.doc.variables.map((v) => v.key);
+    expect(chaves).toContain("utm_source");
+    expect(chaves).toContain("campanha");
+    expect(parseFunnelDocument(comSegunda.doc).success).toBe(true);
+  });
+
+  it("upsert: reenviar a mesma key substitui, não duplica", () => {
+    const primeira = aplicarChamadaDaIa(base, "set_variables", {
+      variables: [{ key: "utm_source", source: "query", defaultValue: "direto" }],
+    });
+    expect(primeira.ok).toBe(true);
+    if (!primeira.ok) return;
+
+    const segunda = aplicarChamadaDaIa(primeira.doc, "set_variables", {
+      variables: [{ key: "utm_source", source: "constant", defaultValue: "google" }],
+    });
+    expect(segunda.ok).toBe(true);
+    if (!segunda.ok) return;
+
+    const variaveis = segunda.doc.variables.filter((v) => v.key === "utm_source");
+    expect(variaveis).toHaveLength(1);
+    expect(variaveis[0].source).toBe("constant");
+  });
+});
+
+describe("container com filhos já populados", () => {
+  it("dá ids e nomes únicos a dois filhos choice de mesmo nome", () => {
+    const resultado = aplicarChamadaDaIa(base, "add_block", {
+      stepId: "step_inicio",
+      type: "container",
+      props: {
+        columns: { base: 1, md: 2 },
+        gap: 16,
+        children: [
+          {
+            id: "blk_titulo", // já existe no template — precisa ganhar sufixo
+            type: "choice",
+            props: {
+              name: "objetivo", // já existe no template — precisa ganhar sufixo
+              multiple: false,
+              layout: "list",
+              autoAdvance: true,
+              required: true,
+              showLetters: false,
+              options: [
+                { id: "a", label: "A" },
+                { id: "b", label: "B" },
+              ],
+            },
+          },
+          {
+            id: "blk_titulo", // colide com o filho anterior também
+            type: "choice",
+            props: {
+              name: "objetivo", // colide com o filho anterior também
+              multiple: false,
+              layout: "list",
+              autoAdvance: true,
+              required: true,
+              showLetters: false,
+              options: [
+                { id: "c", label: "C" },
+                { id: "d", label: "D" },
+              ],
+            },
+          },
+        ],
+      },
+    });
+
+    expect(resultado.ok, resultado.ok ? "" : resultado.error).toBe(true);
+    if (!resultado.ok) return;
+
+    const container = findBlock(resultado.doc, resultado.blocosTocados[0]);
+    expect(container?.block.type).toBe("container");
+    if (container?.block.type !== "container") return;
+
+    const [filho1, filho2] = container.block.props.children;
+    expect(filho1.id).not.toBe(filho2.id);
+    expect(filho1.id).not.toBe("blk_titulo"); // não pode ter roubado o id do bloco existente
+
+    expect(filho1.type).toBe("choice");
+    expect(filho2.type).toBe("choice");
+    if (filho1.type === "choice" && filho2.type === "choice") {
+      expect(filho1.props.name).not.toBe(filho2.props.name);
+      expect(filho1.props.name).not.toBe("objetivo");
+    }
+
+    expect(parseFunnelDocument(resultado.doc).success).toBe(true);
+  });
+});
+
 describe("condições achatadas", () => {
   it("uma regra só não vira grupo desnecessário", () => {
     const condicao = converterCondicao({
@@ -435,7 +638,9 @@ describe("contexto entregue ao modelo", () => {
     for (const tipo of ["heading", "choice", "loader", "result", "button"]) {
       expect(prompt).toContain(`### ${tipo}`);
     }
-    // O container não entra: a IA não manipula blocos aninhados.
+    // Container tem forma diferente (props aninhadas) e por isso não entra no
+    // catálogo genérico — mas ganha uma seção própria explicando o padrão.
     expect(prompt).not.toContain("### container");
+    expect(prompt).toContain("container");
   });
 });

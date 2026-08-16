@@ -27,8 +27,10 @@ export type StepNodeData = {
   condicionaisCount: number;
   /** Leva para o Construtor nesta tela. Injetado pelo canvas. */
   onAbrir: (stepId: string) => void;
-  /** Leva para o copiloto com esta tela como contexto. Injetado pelo canvas. */
+  /** Dispara "Personalizar com IA" nesta tela, sem chat. Injetado pelo canvas. */
   onFocarIa?: (stepId: string) => void;
+  /** A IA está personalizando esta tela agora — mostra o spinner no lugar do ícone. */
+  personalizando?: boolean;
   [key: string]: unknown;
 };
 
@@ -74,6 +76,7 @@ export function buildGraph(
   doc: FunnelDocument,
   onAbrir: (stepId: string) => void = () => {},
   onFocarIa?: (stepId: string) => void,
+  stepPersonalizando?: string | null,
 ): FlowGraph {
   const problemas = lintFunnel(doc);
   const idsExistentes = new Set(doc.steps.map((s) => s.id));
@@ -90,6 +93,7 @@ export function buildGraph(
       condicionaisCount: contarBlocosCondicionais(step),
       onAbrir,
       onFocarIa,
+      personalizando: step.id === stepPersonalizando,
     },
   }));
 

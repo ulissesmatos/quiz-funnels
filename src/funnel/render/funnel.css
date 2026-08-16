@@ -372,9 +372,16 @@
 .fn-choice[data-layout="list"] { grid-template-columns: 1fr; }
 .fn-choice[data-layout="grid2"] { grid-template-columns: repeat(2, 1fr); }
 .fn-choice[data-layout="grid3"] { grid-template-columns: repeat(2, 1fr); }
+.fn-choice[data-layout="emoji"] { grid-template-columns: repeat(2, 1fr); }
 
 @container fn (min-width: 768px) {
   .fn-choice[data-layout="grid3"] { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Pílulas: largura pelo conteúdo, não pela grade — por isso troca pra flex. */
+.fn-choice[data-layout="chips"] {
+  display: flex;
+  flex-wrap: wrap;
 }
 
 .fn-option {
@@ -406,17 +413,37 @@
 }
 
 .fn-option[data-layout="grid2"],
-.fn-option[data-layout="grid3"] {
+.fn-option[data-layout="grid3"],
+.fn-option[data-layout="emoji"] {
   flex-direction: column;
   align-items: stretch;
   text-align: center;
   gap: 10px;
 }
 
+/* Pílula: largura pelo conteúdo, padding menor, bem arredondada. */
+.fn-option[data-layout="chips"] {
+  width: auto;
+  padding: 10px 18px;
+  border-radius: var(--fn-radius-full);
+}
+
 .fn-option-emoji {
   font-size: 1.5em;
   line-height: 1;
   flex-shrink: 0;
+}
+
+/* O emoji é o protagonista deste layout — cresce e ganha um fundo redondo. */
+.fn-option[data-layout="emoji"] .fn-option-emoji {
+  display: grid;
+  place-items: center;
+  align-self: center;
+  width: 52px;
+  height: 52px;
+  font-size: 1.75em;
+  border-radius: var(--fn-radius-full);
+  background: color-mix(in oklab, var(--fn-color-primary) 14%, transparent);
 }
 
 .fn-option-letter {

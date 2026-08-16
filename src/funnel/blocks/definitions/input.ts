@@ -26,7 +26,7 @@ export const choiceBlock = defineBlock({
   category: "entrada",
   icon: "ListTodo",
   description:
-    "Pergunta de múltipla escolha — o bloco mais importante de um quiz. Com 'multiple' desligado e 'autoAdvance' ligado, clicar na opção já avança para o próximo step: é assim que se constrói o padrão de uma pergunta por tela, o que mais converte. Use 'score' ou 'scores' nas opções para classificar o lead.",
+    "Pergunta de múltipla escolha — o bloco mais importante de um quiz. Com 'multiple' desligado e 'autoAdvance' ligado, clicar na opção já avança para o próximo step: é assim que se constrói o padrão de uma pergunta por tela, o que mais converte. Use 'score' ou 'scores' nas opções para classificar o lead. Varie o 'layout' de pergunta para pergunta — usar sempre o mesmo cansa o visitante antes da metade do funil.",
   props: z
     .object({
       name: VariableKey.describe(
@@ -35,8 +35,10 @@ export const choiceBlock = defineBlock({
       options: z.array(ChoiceOption).min(2).max(12),
       multiple: z.boolean().describe("Permite selecionar mais de uma opção"),
       layout: z
-        .enum(["list", "grid2", "grid3"])
-        .describe("list = uma opção por linha (padrão em mobile); grid2/grid3 = colunas, bom para opções com imagem"),
+        .enum(["list", "grid2", "grid3", "emoji", "chips"])
+        .describe(
+          "list = uma opção por linha, com espaço para descrição (padrão em mobile); grid2/grid3 = colunas com imagem ou emoji, boas para poucas opções; emoji = grid de 2 colunas com o emoji em destaque — toda opção PRECISA de emoji nesse layout; chips = pílulas compactas lado a lado, boas para muitas opções curtas ou quando a tela já tem outro elemento visual e as opções não precisam de peso.",
+        ),
       autoAdvance: z
         .boolean()
         .describe("Avança sozinho ao selecionar. Só faz sentido com multiple = false. Dispensa botão de continuar."),
@@ -45,7 +47,20 @@ export const choiceBlock = defineBlock({
       maxSelect: z.number().min(1).optional().describe("Máximo de opções quando multiple = true"),
       showLetters: z.boolean().describe("Mostra A, B, C… antes de cada opção"),
     })
-    .strict(),
+    .strict()
+    .superRefine((props, ctx) => {
+      if (props.layout !== "emoji") return;
+
+      props.options.forEach((option, index) => {
+        if (!option.emoji) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["options", index, "emoji"],
+            message: "Layout 'emoji' exige um emoji em cada opção.",
+          });
+        }
+      });
+    }),
   defaults: {
     name: "resposta",
     options: [

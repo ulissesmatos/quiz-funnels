@@ -58,7 +58,7 @@ export function ChoiceBlock({ props }: { props: PropsOf<"choice"> }) {
               aria-checked={isSelected}
               onClick={() => toggle(option.id)}
             >
-              {props.layout !== "list" && option.image?.url && (
+              {(props.layout === "grid2" || props.layout === "grid3") && option.image?.url && (
                 <img
                   className="fn-option-image"
                   src={option.image.url}
@@ -81,7 +81,9 @@ export function ChoiceBlock({ props }: { props: PropsOf<"choice"> }) {
 
               <span className="fn-option-body">
                 <span className="fn-option-label">{option.label}</span>
-                {option.description && <span className="fn-option-desc">{option.description}</span>}
+                {props.layout !== "chips" && option.description && (
+                  <span className="fn-option-desc">{option.description}</span>
+                )}
               </span>
 
               {props.multiple && (

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SlugId, VariableKey } from "../schema/common";
+import { FunnelVariable } from "../schema/funnel";
 
 /**
  * Ferramentas do copiloto.
@@ -63,7 +64,7 @@ export const aiToolSchemas = {
       fullHeight: z.boolean().optional().describe("Centraliza o conteúdo verticalmente"),
       isEnd: z.boolean().optional().describe("Encerra o funil nesta tela"),
       next: SlugId.optional().describe(
-        "Destino fixo ao sair, no lugar da próxima tela da lista. Use no fim de cada ramo para os caminhos voltarem a convergir.",
+        "Destino fixo ao sair, no lugar da próxima tela da lista. Use só quando o destino não é a próxima tela da lista — convergência no fim de um branch, por exemplo. Omitido, a tela já segue a ordem natural; não chame esta ferramenta só para apontar para o que já viria em seguida.",
       ),
     })
     .strict(),
@@ -84,7 +85,14 @@ export const aiToolSchemas = {
       stepId: SlugId.describe("Tela que recebe o bloco"),
       type: z.string().describe("Tipo do bloco, ex.: heading, choice, button, loader, result"),
       props: BlockProps,
-      index: z.number().int().min(0).optional().describe("Posição na tela; omitido, entra no fim"),
+      index: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe(
+          "Posição na tela; omitido, entra no fim. Notou que faltou um bloco numa tela que já montou? Insira aqui, na posição certa — não remova e recrie os blocos ao redor.",
+        ),
       id: SlugId.optional().describe("Id sugerido; se colidir, ganha sufixo automaticamente"),
     })
     .strict(),
@@ -102,7 +110,11 @@ export const aiToolSchemas = {
     .object({
       blockId: SlugId,
       toStepId: SlugId,
-      toIndex: z.number().int().min(0),
+      toIndex: z
+        .number()
+        .int()
+        .min(0)
+        .describe("Nova posição. Use para reordenar um bloco fora de lugar — não remova e recrie."),
     })
     .strict(),
 
@@ -187,6 +199,56 @@ export const aiToolSchemas = {
       contentWidth: z.number().min(280).max(1400).optional(),
     })
     .strict(),
+
+  /**
+   * Só liberada no modo cuidadoso (`thorough`) — ver `route.ts`. Estruturada,
+   * não texto solto: é o que permite validar a riqueza do plano (sobretudo da
+   * oferta final) antes de gastar qualquer chamada de construção.
+   */
+  submit_plan: z
+    .object({
+      screens: z
+        .array(
+          z.object({
+            name: z.string().min(1).describe("Nome da tela"),
+            type: z.enum(["question", "content", "loading", "result", "form", "checkout"]),
+            purpose: z.string().min(1).describe("O que esta tela faz e por quê, uma frase"),
+            blocks: z
+              .array(z.string())
+              .min(1)
+              .describe("Tipos de bloco desta tela, na ordem em que vão entrar, ex.: ['progress','heading','choice']"),
+            personalization: z
+              .string()
+              .optional()
+              .describe("O que muda nesta tela conforme respostas anteriores, se houver"),
+          }),
+        )
+        .min(1)
+        .describe(
+          "Apenas as telas que este pedido cria ou muda de forma relevante — não redescreva telas existentes que não mudam.",
+        ),
+      scoring: z
+        .string()
+        .describe("Quais perguntas pontuam, para quais categorias, e o que cada uma decide no fim. Se nenhuma pontuar, diga isso."),
+      personalizationSummary: z
+        .string()
+        .min(1)
+        .describe("Resumo de como as respostas mudam o que a pessoa vê ao longo do funil"),
+      variablesPlan: z
+        .string()
+        .optional()
+        .describe("Variáveis de URL/UTM usadas, se houver, e o que elas personalizam"),
+    })
+    .strict(),
+
+  set_variables: z
+    .object({
+      variables: z
+        .array(FunnelVariable)
+        .max(10)
+        .describe("Substitui as variáveis com a mesma key; acrescenta as novas. Não apaga as demais."),
+    })
+    .strict(),
 } as const;
 
 export type AiToolName = keyof typeof aiToolSchemas;
@@ -212,6 +274,10 @@ export const aiToolDescriptions: Record<AiToolName, string> = {
   ask_user:
     "Faz uma pergunta ao usuário e espera a resposta. Use no máximo uma vez por pedido, e só quando a resposta mudaria o funil de verdade.",
   set_theme: "Ajusta cores, fontes e estilo de botão do funil inteiro.",
+  submit_plan:
+    "Envia o plano estruturado do funil antes de construir. No modo cuidadoso, nenhuma outra ferramenta de edição libera até este plano ser aceito — chame como ferramenta, não descreva o plano em texto solto. Se vier rejeitado, corrija e reenvie.",
+  set_variables:
+    "Declara ou atualiza variáveis de personalização por URL (UTM, parâmetros de campanha) ou constantes. Referencie com {{chave}} em qualquer texto do funil.",
 };
 
 /**

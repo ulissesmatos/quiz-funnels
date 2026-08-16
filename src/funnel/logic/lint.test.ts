@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { applyOp, createStep } from "../ops";
+import { getBlockDefinition } from "../schema/block";
 import type { FunnelDocument } from "../schema";
 import { metabolismoTemplate } from "../templates/metabolismo";
 import { lintFunnel, type FunnelIssue } from "./lint";
@@ -296,5 +297,66 @@ describe("personalização", () => {
     } as FunnelDocument;
 
     expect(temCodigo(lintFunnel(doc), "sem_personalizacao")).toBe(false);
+  });
+});
+
+describe("oferta final", () => {
+  it("não reclama da oferta do funil de exemplo, que já tem testimonials e guarantee", () => {
+    expect(temCodigo(lintFunnel(base), "oferta_pouco_trabalhada")).toBe(false);
+  });
+
+  it("acusa uma oferta rasa — heading, texto, lista e botão, sem nenhum bloco de fechamento", () => {
+    // É o próprio padrão que motivou o check: um funil com 5 perguntas
+    // termina numa tela sem nenhum bloco de fechamento de verdade.
+    const doc: FunnelDocument = {
+      ...base,
+      steps: base.steps.map((step) =>
+        step.id === "step_oferta"
+          ? {
+              ...step,
+              blocks: step.blocks.filter(
+                (b) => b.type !== "testimonials" && b.type !== "guarantee",
+              ),
+            }
+          : step,
+      ),
+    } as FunnelDocument;
+
+    const issues = lintFunnel(doc);
+    expect(temCodigo(issues, "oferta_pouco_trabalhada")).toBe(true);
+
+    const aviso = issues.find((i) => i.code === "oferta_pouco_trabalhada")!;
+    expect(aviso.severity).toBe("aviso");
+    expect(aviso.stepId).toBe("step_oferta");
+  });
+
+  it("some quando a oferta ganha pricing, guarantee e testimonials", () => {
+    const doc: FunnelDocument = {
+      ...base,
+      steps: base.steps.map((step) =>
+        step.id === "step_oferta"
+          ? {
+              ...step,
+              blocks: [
+                ...step.blocks.filter((b) => b.type !== "testimonials" && b.type !== "guarantee"),
+                { id: "blk_pricing_extra", type: "pricing", props: getBlockDefinition("pricing")!.example },
+                { id: "blk_guarantee_extra", type: "guarantee", props: getBlockDefinition("guarantee")!.example },
+                {
+                  id: "blk_testimonials_extra",
+                  type: "testimonials",
+                  props: getBlockDefinition("testimonials")!.example,
+                },
+              ],
+            }
+          : step,
+      ),
+    } as FunnelDocument;
+
+    expect(temCodigo(lintFunnel(doc), "oferta_pouco_trabalhada")).toBe(false);
+  });
+
+  it("não reclama de funil curto, que pode ter oferta simples de propósito", () => {
+    const doc: FunnelDocument = { ...base, steps: [base.steps[0], base.steps[1], base.steps.at(-1)!] };
+    expect(temCodigo(lintFunnel(doc), "oferta_pouco_trabalhada")).toBe(false);
   });
 });

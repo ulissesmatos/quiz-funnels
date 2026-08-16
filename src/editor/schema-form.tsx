@@ -89,6 +89,10 @@ function Campo({
     }
 
     case "number":
+      if (nome === "score") {
+        return <CampoPontos rotulo={rotulo} ajuda={ajuda} value={value} onChange={onChange} />;
+      }
+
       return (
         <Rotulo texto={rotulo} ajuda={ajuda}>
           <input
@@ -103,6 +107,10 @@ function Campo({
       );
 
     case "string": {
+      if (nome === "emoji") {
+        return <CampoEmoji rotulo={rotulo} ajuda={ajuda} value={value} onChange={onChange} />;
+      }
+
       const longo = ehTextoLongo(nome, ajuda);
       return (
         <Rotulo texto={rotulo} ajuda={ajuda}>
@@ -183,10 +191,19 @@ function ListaEditavel({
 }) {
   const [aberto, setAberto] = useState<number | null>(0);
   const shape = objectShape(elemento);
+  // Sem shape de objeto, o elemento é um primitivo (string, número, boolean):
+  // não há o que expandir, o valor inteiro do item cabe num controle só.
+  const tipoPrimitivo = shape ? null : tipoDe(unwrap(elemento).inner);
 
   function atualizar(index: number, patch: Record<string, Valor>) {
     const copia = [...value];
     copia[index] = { ...((copia[index] as Record<string, Valor>) ?? {}), ...patch };
+    onChange(copia);
+  }
+
+  function substituir(index: number, novo: Valor) {
+    const copia = [...value];
+    copia[index] = novo;
     onChange(copia);
   }
 
@@ -218,8 +235,58 @@ function ListaEditavel({
       {value.length === 0 && <p className="py-1 text-xs text-app-muted">Nenhum item ainda.</p>}
 
       {value.map((item, index) => {
-        const registro = (item as Record<string, Valor>) ?? {};
         const expandido = aberto === index;
+
+        const controles = (
+          <>
+            <button
+              type="button"
+              aria-label="Subir"
+              className="text-app-muted hover:text-app-text disabled:opacity-25"
+              disabled={index === 0}
+              onClick={() => mover(index, index - 1)}
+            >
+              <ChevronUp size={13} />
+            </button>
+            <button
+              type="button"
+              aria-label="Descer"
+              className="text-app-muted hover:text-app-text disabled:opacity-25"
+              disabled={index === value.length - 1}
+              onClick={() => mover(index, index + 1)}
+            >
+              <ChevronDown size={13} />
+            </button>
+            <button
+              type="button"
+              aria-label="Remover"
+              className="text-app-muted hover:text-app-danger"
+              onClick={() => onChange(value.filter((_, i) => i !== index))}
+            >
+              <X size={13} />
+            </button>
+          </>
+        );
+
+        // Elemento primitivo: o campo de valor fica na própria linha, sem
+        // painel para expandir — não há nada além dele para editar no item.
+        if (tipoPrimitivo) {
+          return (
+            <div
+              key={index}
+              className="flex items-center gap-1.5 rounded-lg border border-app-border bg-app-surface-2 px-2 py-1.5"
+            >
+              <ControleDeItem
+                tipo={tipoPrimitivo}
+                value={item}
+                onChange={(novo) => substituir(index, novo)}
+              />
+              {controles}
+            </div>
+          );
+        }
+
+        const registro = (item as Record<string, Valor>) ?? {};
 
         return (
           <div key={index} className="rounded-lg border border-app-border bg-app-surface-2">
@@ -229,38 +296,13 @@ function ListaEditavel({
                 className="min-w-0 flex-1 truncate text-left text-xs"
                 onClick={() => setAberto(expandido ? null : index)}
               >
-                {resumoDoItem(registro, index)}
+                {resumoDoItem(item, index)}
               </button>
 
-              <button
-                type="button"
-                aria-label="Subir"
-                className="text-app-muted hover:text-app-text disabled:opacity-25"
-                disabled={index === 0}
-                onClick={() => mover(index, index - 1)}
-              >
-                <ChevronUp size={13} />
-              </button>
-              <button
-                type="button"
-                aria-label="Descer"
-                className="text-app-muted hover:text-app-text disabled:opacity-25"
-                disabled={index === value.length - 1}
-                onClick={() => mover(index, index + 1)}
-              >
-                <ChevronDown size={13} />
-              </button>
-              <button
-                type="button"
-                aria-label="Remover"
-                className="text-app-muted hover:text-app-danger"
-                onClick={() => onChange(value.filter((_, i) => i !== index))}
-              >
-                <X size={13} />
-              </button>
+              {controles}
             </div>
 
-            {expandido && shape && (
+            {expandido && (
               <div className="border-t border-app-border p-2.5">
                 <SchemaForm
                   schema={elemento}
@@ -273,6 +315,48 @@ function ListaEditavel({
         );
       })}
     </div>
+  );
+}
+
+/** Controle inline para um item primitivo de lista (sem sub-campos). */
+function ControleDeItem({
+  tipo,
+  value,
+  onChange,
+}: {
+  tipo: string;
+  value: Valor;
+  onChange: (valor: Valor) => void;
+}) {
+  if (tipo === "number") {
+    return (
+      <input
+        type="number"
+        className="ed-control min-w-0 flex-1"
+        value={value === undefined || value === null ? "" : Number(value as number)}
+        onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+      />
+    );
+  }
+
+  if (tipo === "boolean") {
+    return (
+      <input
+        type="checkbox"
+        className="h-4 w-4 accent-[var(--color-app-primary)]"
+        checked={Boolean(value)}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+    );
+  }
+
+  return (
+    <input
+      type="text"
+      className="ed-control min-w-0 flex-1"
+      value={typeof value === "string" ? value : ""}
+      onChange={(e) => onChange(e.target.value)}
+    />
   );
 }
 
@@ -326,6 +410,123 @@ function UniaoDiscriminada({
           value={value ?? {}}
           onChange={(patch) => onChange({ ...(value ?? {}), ...patch })}
         />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Pontos de uma opção: arrastar é mais rápido que digitar pra um número pequeno,
+ * mas o campo ao lado continua aberto pra valores fora da faixa do slider.
+ */
+function CampoPontos({
+  rotulo,
+  ajuda,
+  value,
+  onChange,
+}: {
+  rotulo: string;
+  ajuda?: string;
+  value: Valor;
+  onChange: (valor: Valor) => void;
+}) {
+  const numero = typeof value === "number" ? value : 0;
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm">{rotulo}</span>
+        <input
+          type="number"
+          value={value === undefined || value === null ? "" : numero}
+          onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+          className="ed-control h-7 w-16 shrink-0 px-1.5 text-center text-xs"
+        />
+      </div>
+      <input
+        type="range"
+        min={-10}
+        max={10}
+        step={1}
+        value={Math.max(-10, Math.min(10, numero))}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-[var(--color-app-primary)]"
+        aria-label={rotulo}
+      />
+      {ajuda && <Ajuda>{ajuda}</Ajuda>}
+    </div>
+  );
+}
+
+const EMOJIS_SUGERIDOS = [
+  "😀", "😃", "😄", "😁", "🙂", "😊", "😍", "🤩", "🥳", "😎",
+  "🤔", "😅", "😬", "😴", "😢", "😭", "😡", "😱", "🙌", "👍",
+  "👎", "👏", "🙏", "💪", "✋", "👉", "🔥", "⭐", "✨", "💯",
+  "✅", "❌", "⚡", "💡", "🎯", "🏆", "🎉", "🎁", "⏰", "📈",
+  "📉", "💰", "💸", "❤️", "💔", "💚", "🧠", "🍎", "🥗", "🍔",
+  "🏃", "🧘", "💤", "🌱", "🌟", "🚀", "🛑", "⚠️", "❓", "👶",
+];
+
+/** Emoji de uma opção: escolher da grade é mais rápido que caçar no teclado do sistema. */
+function CampoEmoji({
+  rotulo,
+  ajuda,
+  value,
+  onChange,
+}: {
+  rotulo: string;
+  ajuda?: string;
+  value: Valor;
+  onChange: (valor: Valor) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const atual = typeof value === "string" ? value : "";
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-sm">{rotulo}</span>
+
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setAberto((atual) => !atual)}
+          aria-label="Escolher emoji"
+          aria-expanded={aberto}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-app-border bg-app-surface text-base hover:border-app-primary"
+        >
+          {atual || "🙂"}
+        </button>
+        <input
+          type="text"
+          value={atual}
+          onChange={(e) => onChange(e.target.value)}
+          maxLength={8}
+          placeholder="ou digite um emoji"
+          className="ed-control min-w-0 flex-1"
+        />
+      </div>
+
+      {ajuda && <Ajuda>{ajuda}</Ajuda>}
+
+      {aberto && (
+        <div className="grid grid-cols-8 gap-1 rounded-lg border border-app-border bg-app-surface-2 p-2">
+          {EMOJIS_SUGERIDOS.map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => {
+                onChange(emoji);
+                setAberto(false);
+              }}
+              className={cn(
+                "grid h-7 w-7 place-items-center rounded-md text-sm hover:bg-app-surface",
+                emoji === atual && "bg-app-primary/20",
+              )}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -518,50 +719,46 @@ function omitirCampo(schema: z.ZodType, campo: string): z.ZodType {
 }
 
 /**
- * Valor inicial de um item novo: `parse({})` preenche o que tem default e o
- * resto vira o vazio do tipo. Não precisa ser válido ainda — o usuário está
- * prestes a preencher, e a validação de verdade acontece ao salvar.
+ * Valor inicial de um item novo. Não precisa ser válido ainda — o usuário
+ * está prestes a preencher, e a validação de verdade acontece ao salvar.
+ *
+ * Cobre tanto elemento de lista primitivo (string, número, boolean — o valor
+ * inteiro do item) quanto objeto (um valor por campo obrigatório).
  */
-function valorPadrao(schema: z.ZodType): Record<string, Valor> {
-  const shape = objectShape(schema);
-  if (!shape) return {};
+function valorPadrao(schema: z.ZodType): Valor {
+  const { inner } = unwrap(schema);
 
-  const resultado: Record<string, Valor> = {};
+  const literal = literalDe(inner);
+  if (literal !== null) return literal;
 
-  for (const [chave, campo] of Object.entries(shape)) {
-    const { inner, optional } = unwrap(campo);
+  switch (tipoDe(inner)) {
+    case "string":
+      return "";
+    case "number":
+      return 0;
+    case "boolean":
+      return false;
+    case "array":
+      return [];
+    case "enum":
+      return enumOptions(inner)[0] ?? "";
 
-    const literal = literalDe(inner);
-    if (literal !== null) {
-      resultado[chave] = literal;
-      continue;
+    case "object": {
+      const shape = objectShape(inner);
+      if (!shape) return {};
+
+      const resultado: Record<string, Valor> = {};
+      for (const [chave, campo] of Object.entries(shape)) {
+        const { optional } = unwrap(campo);
+        if (optional) continue;
+        resultado[chave] = valorPadrao(campo);
+      }
+      return resultado;
     }
 
-    if (optional) continue;
-
-    switch (tipoDe(inner)) {
-      case "string":
-        resultado[chave] = "";
-        break;
-      case "number":
-        resultado[chave] = 0;
-        break;
-      case "boolean":
-        resultado[chave] = false;
-        break;
-      case "array":
-        resultado[chave] = [];
-        break;
-      case "enum":
-        resultado[chave] = enumOptions(inner)[0] ?? "";
-        break;
-      case "object":
-        resultado[chave] = valorPadrao(inner);
-        break;
-    }
+    default:
+      return undefined;
   }
-
-  return resultado;
 }
 
 // ── Texto ──────────────────────────────────────────────────────
@@ -646,10 +843,15 @@ function ehTextoLongo(nome: string, ajuda?: string): boolean {
   return Boolean(ajuda?.includes("**negrito**"));
 }
 
-function resumoDoItem(item: Record<string, Valor>, index: number): string {
-  for (const chave of ["label", "title", "text", "id", "name"]) {
-    const valor = item[chave];
-    if (typeof valor === "string" && valor.trim()) return valor;
+function resumoDoItem(item: Valor, index: number): string {
+  if (typeof item === "string") return item.trim() || `Item ${index + 1}`;
+
+  if (item && typeof item === "object") {
+    for (const chave of ["label", "title", "text", "id", "name"]) {
+      const valor = (item as Record<string, Valor>)[chave];
+      if (typeof valor === "string" && valor.trim()) return valor;
+    }
   }
+
   return `Item ${index + 1}`;
 }
