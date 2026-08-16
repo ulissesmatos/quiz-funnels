@@ -1,3 +1,4 @@
+import { extractTokens } from "./interpolate";
 import { walkBlocks, type Block } from "../schema/block";
 import type { Condition } from "../schema/common";
 import type { FunnelDocument } from "../schema/funnel";
@@ -29,7 +30,8 @@ export type FunnelIssue = {
     | "sem_personalizacao"
     | "fim_prematuro"
     | "ctas_simultaneos"
-    | "oferta_pouco_trabalhada";
+    | "oferta_pouco_trabalhada"
+    | "opcao_com_pronome_interpolado";
   message: string;
   stepId?: string;
   blockId?: string;
@@ -264,6 +266,53 @@ export function lintFunnel(doc: FunnelDocument): FunnelIssue[] {
 
   issues.push(...verificarPersonalizacao(doc));
   issues.push(...verificarOfertaFinal(doc));
+  issues.push(...verificarPronomeEmOpcaoInterpolada(doc));
+
+  return issues;
+}
+
+/**
+ * "minhas"/"meu" numa opção de escolha quebra a concordância assim que o
+ * funil cita a resposta de volta em prosa na segunda pessoa ("Para
+ * {{objetivo}}, você..."). Três das quatro opções costumam vir neutras
+ * ("Aumentar o valor percebido") e uma com pronome de primeira pessoa
+ * ("Escalar minhas vendas") — foi exatamente esse mix que produziu "Para
+ * Escalar minhas vendas, entender como você entrega..." num funil real.
+ *
+ * Só acusa quando o campo é citado como \{\{campo\}\} em algum texto do
+ * funil — um pronome na opção não é problema nenhum se ela nunca volta em
+ * prosa, só quando aparece sozinha como rótulo do botão.
+ */
+const PRONOME_PRIMEIRA_PESSOA = /\b(meu|meus|minha|minhas)\b/i;
+
+function verificarPronomeEmOpcaoInterpolada(doc: FunnelDocument): FunnelIssue[] {
+  const tokensCitados = new Set<string>();
+  for (const step of doc.steps) {
+    for (const block of walkBlocks(step.blocks)) {
+      for (const token of extractTokens(JSON.stringify(block.props))) tokensCitados.add(token);
+    }
+  }
+
+  const issues: FunnelIssue[] = [];
+
+  for (const step of doc.steps) {
+    for (const block of walkBlocks(step.blocks)) {
+      if (block.type !== "choice") continue;
+      if (!tokensCitados.has(block.props.name)) continue;
+
+      for (const option of block.props.options) {
+        if (!PRONOME_PRIMEIRA_PESSOA.test(option.label)) continue;
+
+        issues.push({
+          severity: "aviso",
+          code: "opcao_com_pronome_interpolado",
+          stepId: step.id,
+          blockId: block.id,
+          message: `A opção "${option.label}" do campo "${block.props.name}" tem pronome de primeira pessoa, mas {{${block.props.name}}} é citado em prosa de segunda pessoa em outra tela — a frase mistura pessoa gramatical (ex.: "Para ${option.label}, você..."). Reescreva a opção sem pronome (troque "minhas vendas" por "as vendas") para funcionar tanto sozinha quanto interpolada.`,
+        });
+      }
+    }
+  }
 
   return issues;
 }

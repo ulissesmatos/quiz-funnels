@@ -203,6 +203,66 @@ describe("CTAs simultâneos", () => {
   });
 });
 
+describe("pronome em opção interpolada", () => {
+  // Reproduz o caso real: campo "objetivo" citado como {{objetivo}} numa
+  // tela depois, com a última opção variando o pronome da própria label.
+  function comCampoObjetivo(rotuloUltimaOpcao: string): FunnelDocument {
+    return {
+      ...base,
+      steps: base.steps.map((step) => {
+        if (step.id === "step_objetivo") {
+          return {
+            ...step,
+            blocks: step.blocks.map((block) =>
+              block.id === "blk_opcoes_objetivo" && block.type === "choice"
+                ? {
+                    ...block,
+                    props: {
+                      ...block.props,
+                      options: block.props.options.map((option, index, options) =>
+                        index === options.length - 1 ? { ...option, label: rotuloUltimaOpcao } : option,
+                      ),
+                    },
+                  }
+                : block,
+            ),
+          };
+        }
+
+        if (step.id === "step_resultado") {
+          return {
+            ...step,
+            blocks: [
+              ...step.blocks,
+              {
+                id: "blk_teste_pronome",
+                type: "text" as const,
+                props: { text: "Para {{objetivo}}, este é o seu plano." },
+              },
+            ],
+          };
+        }
+
+        return step;
+      }),
+    } as FunnelDocument;
+  }
+
+  it("acusa opção com pronome de primeira pessoa quando o campo é citado em outra tela", () => {
+    const doc = comCampoObjetivo("Ganhar minhas primeiras vitórias");
+    expect(temCodigo(lintFunnel(doc), "opcao_com_pronome_interpolado")).toBe(true);
+  });
+
+  it("não reclama quando a opção não tem pronome", () => {
+    const doc = comCampoObjetivo("Ganhar mais disposição");
+    expect(temCodigo(lintFunnel(doc), "opcao_com_pronome_interpolado")).toBe(false);
+  });
+
+  it("não reclama se o campo nunca é citado em prosa (funil de exemplo)", () => {
+    expect(temCodigo(lintFunnel(base), "opcao_com_pronome_interpolado")).toBe(false);
+  });
+});
+
 describe("fim marcado no meio do funil", () => {
   it("aponta a causa, e não só as telas órfãs", () => {
     // Foi assim que um funil real foi ao ar: oferta marcada como fim, com o

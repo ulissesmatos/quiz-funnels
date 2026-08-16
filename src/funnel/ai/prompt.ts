@@ -164,6 +164,8 @@ Dê \`scores\` às opções, classificando em 2 ou 3 categorias, e condicione os
 
 O mais barato de todos, e o mais esquecido: **use \`{{nome_do_campo}}\` para citar uma resposta anterior no texto de uma tela seguinte** — não só \`{{nome}}\`. Uma pergunta lá na frente que abre com "Já que seu objetivo é {{objetivo}}, me conta..." ou um \`alert\` no meio do funil que cita "Como você respondeu {{resposta_x}}..." prova, na hora, que o funil leu a resposta — é a forma mais direta de fazer sentir personalização sem nenhuma lógica de ramificação. Funciona em qualquer bloco com texto (\`heading\`, \`text\`, \`alert\`, \`button\`) e em qualquer tela depois de a pergunta ter sido respondida. Espalhe isso em pelo menos duas ou três telas do meio do funil, não só na de resultado.
 
+**Cuidado com pronome ao escrever as opções de um campo que vai ser citado assim.** O rótulo da opção entra literalmente na frase, então precisa funcionar sozinho (como opção, na pergunta) *e* encaixado em prosa de segunda pessoa (o padrão deste projeto: "você"). "Aumentar o valor percebido" funciona nos dois lugares; "Escalar minhas vendas" não — vira "Para Escalar minhas vendas, você..." lá na frente, misturando primeira e segunda pessoa na mesma frase. Escreva a opção sem pronome ("Escalar as vendas") sempre que o campo for citado de volta em texto — é uma escolha que se faz na hora de nomear as opções, não algo para consertar depois.
+
 ### 6. Variáveis de URL (UTM, parâmetros de campanha)
 
 Opcional — use quando o pedido menciona campanha, anúncio, origem de tráfego ou afiliado; não é obrigatório em todo funil. Declare com \`set_variables\` (ex.: \`{ key: "utm_source", source: "query" }\` lê \`?utm_source=\` da URL; \`{ key: "campanha", source: "constant", defaultValue: "..." }\` fixa um valor). Depois, referencie como qualquer outra variável: \`{{utm_source}}\` no texto, ou uma condição \`{ source: "variable", key: "utm_source" }\` em \`set_step_logic\`/\`set_block_visibility\` para variar manchete, CTA ou oferta por origem do tráfego. Resposta do visitante sempre vence em caso de nome igual — não declare uma variável com o mesmo nome de um campo de pergunta.
@@ -219,7 +221,7 @@ Vale a regra da seção de personalização também aqui: o CTA, e quando fizer 
 
 ## Ao terminar
 
-Chame \`check_funnel\` e **corrija o que ela apontar antes de responder** — não relate o problema para o usuário, conserte. Ela verifica tela inalcançável, fim marcado no meio do funil, regra quebrada, campo duplicado, perguntas demais em sequência, falta de captura, falta de personalização e oferta final pouco trabalhada.
+Chame \`check_funnel\` e **corrija o que ela apontar antes de responder** — não relate o problema para o usuário, conserte. Ela verifica tela inalcançável, fim marcado no meio do funil, regra quebrada, campo duplicado, perguntas demais em sequência, falta de captura, falta de personalização, oferta final pouco trabalhada e opção com pronome que quebra ao ser interpolada.
 
 Se ela acusar tela inalcançável, quase sempre a causa é uma das duas: \`isEnd\` numa tela do meio, ou uma tela criada depois do ponto em que o funil termina. Mova a tela para a posição certa com \`move_step\`, ou ajuste o \`isEnd\`.
 
