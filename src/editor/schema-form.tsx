@@ -75,7 +75,7 @@ function Campo({
           <select
             className="ed-control"
             value={String(value ?? "")}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.value)}
           >
             {optional && <option value="">—</option>}
             {opcoes.map((opcao) => (
