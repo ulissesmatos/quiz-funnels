@@ -33,7 +33,11 @@ export function AlertBlock({ props }: { props: PropsOf<"alert"> }) {
     <div className="fn-alert" data-variant={props.variant} role="note">
       <Icone size={18} className="fn-alert-icon" aria-hidden />
       <div className="fn-alert-body">
-        {props.title && <strong className="fn-alert-title">{plainText(props.title, context)}</strong>}
+        {props.title && (
+          <strong className="fn-alert-title">
+            <RichText as="span" text={props.title} context={context} />
+          </strong>
+        )}
         <RichText as="div" text={props.text} context={context} className="fn-alert-text" />
       </div>
     </div>
@@ -68,7 +72,9 @@ export function CardsBlock({ props }: { props: PropsOf<"cards"> }) {
               <Icone size={22} className="fn-card-icon" aria-hidden />
             ) : null}
 
-            <strong className="fn-card-title">{plainText(item.title, context)}</strong>
+            <strong className="fn-card-title">
+              <RichText as="span" text={item.title} context={context} />
+            </strong>
             {item.description && (
               <RichText as="div" text={item.description} context={context} className="fn-card-desc" />
             )}
@@ -164,7 +170,7 @@ export function MarqueeBlock({ props }: { props: PropsOf<"marquee"> }) {
             )}
             <span>
               {item.name && <strong className="fn-marquee-name">{item.name}</strong>}
-              <span className="fn-marquee-text">{plainText(item.text, context)}</span>
+              <RichText as="span" text={item.text} context={context} className="fn-marquee-text" />
             </span>
           </div>
         ))}
@@ -199,7 +205,7 @@ export function FaqBlock({ props }: { props: PropsOf<"faq"> }) {
               aria-controls={`${id}-${index}`}
               onClick={() => alternar(index)}
             >
-              <span>{plainText(item.question, context)}</span>
+              <RichText as="span" text={item.question} context={context} />
               <ChevronDown size={16} className="fn-faq-chevron" aria-hidden />
             </button>
 

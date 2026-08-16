@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
-import { cloneElement, isValidElement, useId, useState } from "react";
+import { cloneElement, Fragment, isValidElement, useId, useRef, useState } from "react";
 import { z } from "zod";
 
 import { cn } from "@/lib/cn";
@@ -114,20 +114,7 @@ function Campo({
       const longo = ehTextoLongo(nome, ajuda);
       return (
         <Rotulo texto={rotulo} ajuda={ajuda}>
-          {longo ? (
-            <textarea
-              className="ed-control min-h-20 resize-y"
-              value={String(value ?? "")}
-              onChange={(e) => onChange(e.target.value)}
-            />
-          ) : (
-            <input
-              type={nome.toLowerCase().includes("color") ? "text" : "text"}
-              className="ed-control"
-              value={String(value ?? "")}
-              onChange={(e) => onChange(e.target.value)}
-            />
-          )}
+          <CampoComVariaveis multilinha={longo} value={String(value ?? "")} onChange={onChange} />
         </Rotulo>
       );
     }
@@ -409,6 +396,86 @@ function UniaoDiscriminada({
           schema={omitirCampo(variante, discriminador)}
           value={value ?? {}}
           onChange={(patch) => onChange({ ...(value ?? {}), ...patch })}
+        />
+      )}
+    </div>
+  );
+}
+
+/** `{{chave}}` reconhecível dentro do texto do campo, com grupo de captura. */
+const TOKEN_DE_VARIAVEL = /(\{\{\s*[a-zA-Z_][a-zA-Z0-9_.]*\s*\}\})/g;
+const EH_TOKEN_INTEIRO = /^\{\{[\s\S]*\}\}$/;
+
+/**
+ * Campo de texto com `{{variáveis}}` destacadas em amarelo enquanto edita.
+ *
+ * Um `<input>`/`<textarea>` nativo não consegue colorir só parte do próprio
+ * valor. A técnica é sobrepor dois elementos: o campo de verdade fica com o
+ * texto transparente (só o cursor aparece, via `caret-color`) e recebe todo
+ * clique/tecla normalmente; por baixo, um `<div>` decorativo espelha o mesmo
+ * texto com as tags em amarelo. Os dois precisam da mesma fonte, padding e
+ * quebra de linha — senão os caracteres do campo real desalinham do espelho
+ * visível, e clicar num ponto do texto não posiciona o cursor ali.
+ */
+function CampoComVariaveis({
+  multilinha,
+  value,
+  onChange,
+  id,
+  "aria-describedby": ariaDescribedBy,
+}: {
+  multilinha: boolean;
+  value: string;
+  onChange: (valor: string) => void;
+  id?: string;
+  "aria-describedby"?: string;
+}) {
+  const espelhoRef = useRef<HTMLDivElement>(null);
+
+  function sincronizarRolagem(el: HTMLTextAreaElement | HTMLInputElement) {
+    if (!espelhoRef.current) return;
+    espelhoRef.current.scrollTop = el.scrollTop;
+    espelhoRef.current.scrollLeft = el.scrollLeft;
+  }
+
+  const partes = value.split(TOKEN_DE_VARIAVEL);
+
+  return (
+    <div className="ed-var-field">
+      <div ref={espelhoRef} className="ed-var-backdrop" data-multilinha={multilinha} aria-hidden="true">
+        {partes.map((parte, i) =>
+          EH_TOKEN_INTEIRO.test(parte) ? (
+            <span key={i} className="ed-var-token">
+              {parte}
+            </span>
+          ) : (
+            <Fragment key={i}>{parte}</Fragment>
+          ),
+        )}
+        {/* Sem isto, um valor terminado em quebra de linha não reserva a
+            linha vazia, e o campo de verdade por cima fica uma linha maior
+            que o espelho. */}
+        {value.endsWith("\n") && "​"}
+      </div>
+
+      {multilinha ? (
+        <textarea
+          id={id}
+          aria-describedby={ariaDescribedBy}
+          className="ed-control ed-var-input min-h-20 resize-y"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onScroll={(e) => sincronizarRolagem(e.currentTarget)}
+        />
+      ) : (
+        <input
+          id={id}
+          aria-describedby={ariaDescribedBy}
+          type="text"
+          className="ed-control ed-var-input"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onScroll={(e) => sincronizarRolagem(e.currentTarget)}
         />
       )}
     </div>

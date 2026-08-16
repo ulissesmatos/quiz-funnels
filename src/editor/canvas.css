@@ -237,6 +237,46 @@ select.ed-control {
   padding-right: 28px;
 }
 
+/**
+ * Campo de texto com `{{variável}}` em destaque (`CampoComVariaveis`).
+ *
+ * `.ed-var-backdrop` e `.ed-var-input` precisam do mesmo padding/borda/fonte
+ * de `.ed-control` — são duas caixas sobrepostas, e qualquer diferença entre
+ * elas desalinha o texto de verdade (invisível) do espelho colorido embaixo.
+ */
+.ed-var-field { position: relative; }
+
+.ed-var-backdrop {
+  position: absolute;
+  inset: 0;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-app-text);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  pointer-events: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* Campo de uma linha: rola na horizontal como o <input> real, não quebra. */
+.ed-var-backdrop[data-multilinha="false"] {
+  white-space: pre;
+}
+
+.ed-var-token { color: #f2ff3d; }
+
+.ed-var-input {
+  position: relative;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--color-app-text);
+}
+
+.ed-var-input::selection { background: color-mix(in oklab, var(--color-app-primary) 45%, transparent); }
+
 /* ── Item da paleta sendo arrastado ───────────────────────── */
 
 .ed-drag-preview {

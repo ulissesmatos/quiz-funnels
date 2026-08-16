@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { PropsOf } from "../../schema/block";
 import type { Theme } from "../../schema/theme";
-import { RichText, plainText } from "../rich-text";
+import { RichText } from "../rich-text";
 import { useFunnelRuntime } from "../runtime-context";
 
 export function PricingBlock({ props, theme }: { props: PropsOf<"pricing">; theme: Theme }) {
@@ -13,17 +13,19 @@ export function PricingBlock({ props, theme }: { props: PropsOf<"pricing">; them
 
   return (
     <div className="fn-pricing" data-highlighted={props.highlighted}>
-      {props.badge && <span className="fn-pricing-badge">{plainText(props.badge, context)}</span>}
+      {props.badge && <RichText as="span" text={props.badge} context={context} className="fn-pricing-badge" />}
 
       <div className="fn-pricing-body">
-        <strong className="fn-pricing-title">{plainText(props.title, context)}</strong>
+        <strong className="fn-pricing-title">
+          <RichText as="span" text={props.title} context={context} />
+        </strong>
         {props.description && (
           <RichText text={props.description} context={context} className="fn-pricing-desc" />
         )}
 
         <div className="fn-pricing-price-row">
           <div className="fn-pricing-price-main">
-            <span className="fn-pricing-price">{plainText(props.price, context)}</span>
+            <RichText as="span" text={props.price} context={context} className="fn-pricing-price" />
             {props.priceNote && <span className="fn-pricing-note">{props.priceNote}</span>}
           </div>
 
@@ -44,7 +46,7 @@ export function PricingBlock({ props, theme }: { props: PropsOf<"pricing">; them
             {props.features.map((feature, index) => (
               <li key={index}>
                 <Check size={14} strokeWidth={3} aria-hidden />
-                {plainText(feature, context)}
+                <RichText as="span" text={feature} context={context} />
               </li>
             ))}
           </ul>
@@ -59,7 +61,7 @@ export function PricingBlock({ props, theme }: { props: PropsOf<"pricing">; them
           data-uppercase={theme.button.uppercase}
           onClick={() => interactive && runAction(props.action)}
         >
-          <span className="fn-button-row">{plainText(props.actionLabel, context)}</span>
+          <RichText as="span" text={props.actionLabel} context={context} className="fn-button-row" />
         </button>
       </div>
     </div>
@@ -68,7 +70,6 @@ export function PricingBlock({ props, theme }: { props: PropsOf<"pricing">; them
 
 export function GuaranteeBlock({ props }: { props: PropsOf<"guarantee"> }) {
   const { context } = useFunnelRuntime();
-  const titulo = props.title ? plainText(props.title, context) : `Garantia de ${props.days} dias`;
 
   return (
     <div className="fn-guarantee">
@@ -76,7 +77,13 @@ export function GuaranteeBlock({ props }: { props: PropsOf<"guarantee"> }) {
         <ShieldCheck size={26} strokeWidth={2} />
       </span>
       <div className="fn-guarantee-body">
-        <strong className="fn-guarantee-title">{titulo}</strong>
+        <strong className="fn-guarantee-title">
+          {props.title ? (
+            <RichText as="span" text={props.title} context={context} />
+          ) : (
+            `Garantia de ${props.days} dias`
+          )}
+        </strong>
         <RichText text={props.text} context={context} className="fn-guarantee-text" />
       </div>
     </div>
@@ -160,10 +167,12 @@ export function CountdownBlock({ props, blockId }: { props: PropsOf<"countdown">
 
   return (
     <div className="fn-countdown" data-expired={expirou}>
-      {props.label && <span className="fn-countdown-label">{plainText(props.label, context)}</span>}
+      {props.label && <RichText as="span" text={props.label} context={context} className="fn-countdown-label" />}
 
       {expirou && props.expiredText ? (
-        <strong className="fn-countdown-clock">{plainText(props.expiredText, context)}</strong>
+        <strong className="fn-countdown-clock">
+          <RichText as="span" text={props.expiredText} context={context} />
+        </strong>
       ) : (
         <strong className="fn-countdown-clock" role="timer" aria-live="off">
           {horas > 0 && <Unidade valor={horas} sufixo="h" />}

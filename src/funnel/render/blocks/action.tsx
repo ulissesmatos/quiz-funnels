@@ -38,9 +38,7 @@ export function ButtonBlock({
         <RichText as="span" text={props.label} context={context} />
         {Icon && <Icon size={18} aria-hidden />}
       </span>
-      {props.subLabel && (
-        <span className="fn-button-sub">{plainText(props.subLabel, context)}</span>
-      )}
+      {props.subLabel && <RichText as="span" text={props.subLabel} context={context} className="fn-button-sub" />}
     </button>
   );
 }
@@ -126,9 +124,13 @@ export function LoaderBlock({ props }: { props: PropsOf<"loader"> }) {
       {layout === "pulso" && (
         <div className="fn-loader-pulse">
           <span className="fn-loader-pulse-dot" />
-          <p className="fn-loader-pulse-label" key={currentIndex}>
-            {plainText(props.steps[currentIndex]?.label ?? "", context)}
-          </p>
+          <RichText
+            key={currentIndex}
+            as="p"
+            text={props.steps[currentIndex]?.label ?? ""}
+            context={context}
+            className="fn-loader-pulse-label"
+          />
           {props.showPercent && <span className="fn-loader-pulse-percent">{percent}%</span>}
         </div>
       )}
@@ -160,7 +162,7 @@ function LoaderSteps({
                 <Loader2 size={12} className="fn-spin" />
               ) : null}
             </span>
-            {plainText(step.label, context)}
+            <RichText as="span" text={step.label} context={context} />
           </li>
         );
       })}
@@ -222,7 +224,7 @@ export function ResultBlock({ props }: { props: PropsOf<"result"> }) {
 
   return (
     <div className="fn-result">
-      {outcome.badge && <span className="fn-result-badge">{plainText(outcome.badge, context)}</span>}
+      {outcome.badge && <RichText as="span" text={outcome.badge} context={context} className="fn-result-badge" />}
 
       {outcome.image?.url && (
         <img
