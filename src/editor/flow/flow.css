@@ -30,12 +30,9 @@
   box-shadow: none;
 }
 
-/* O minimapa padrão ocupa um quarto da tela; aqui ele é referência, não peça
-   principal. */
-.fl-wrap .react-flow__minimap {
-  width: 168px;
-  height: 108px;
-}
+/* Tamanho vem do `style` no componente, não daqui — o MiniMap usa esse valor
+   para calcular o próprio viewBox interno, então uma medida só em CSS não
+   basta (o SVG nasce no tamanho padrão da lib e a div corta o excesso). */
 
 .fl-wrap .react-flow__controls-button {
   background: var(--color-app-surface);

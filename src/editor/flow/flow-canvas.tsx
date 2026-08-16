@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  applyNodeChanges,
   Background,
   BackgroundVariant,
   Controls,
@@ -109,25 +110,39 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
    * Telas sem posição — recém-criadas, ou vindas da IA — recebem layout
    * automático. Só as que faltam: reorganizar o mapa inteiro moveria os nós que
    * a pessoa já arrumou.
+   *
+   * Debatido: a IA cria uma ramificação em várias chamadas seguidas (uma
+   * `add_step` por ramo), e cada chamada muda o documento na hora — sem
+   * espera, este efeito rodava uma vez por chamada, cada vez com o `dagre`
+   * enxergando um pedaço diferente do grafo. Dois ramos irmãos criados a
+   * poucos milissegundos de distância podiam sair de rodadas diferentes do
+   * layout, cada uma calculada sem saber da outra, e acabar na mesma posição.
+   * Esperar a rajada assentar faz o `dagre` ver todos os ramos novos de uma
+   * vez e distribuí-los sem sobrepor.
    */
   useEffect(() => {
-    const faltando = stepsSemPosicao(doc);
-    if (faltando.length === 0) return;
+    const temporizador = setTimeout(() => {
+      const docAtual = store.getState().doc;
+      const faltando = stepsSemPosicao(docAtual);
+      if (faltando.length === 0) return;
 
-    const posicoes = autoLayout(buildGraph(doc));
+      const posicoes = autoLayout(buildGraph(docAtual));
 
-    for (const stepId of faltando) {
-      const posicao = posicoes[stepId];
-      if (posicao) {
-        store.getState().dispatch(
-          { type: "set_flow_position", stepId, x: posicao.x, y: posicao.y },
-          { label: "Organizar fluxo", mergeKey: "flow:layout", mergeWindowMs: Infinity, skipHistory: true },
-        );
+      for (const stepId of faltando) {
+        const posicao = posicoes[stepId];
+        if (posicao) {
+          store.getState().dispatch(
+            { type: "set_flow_position", stepId, x: posicao.x, y: posicao.y },
+            { label: "Organizar fluxo", mergeKey: "flow:layout", mergeWindowMs: Infinity, skipHistory: true },
+          );
+        }
       }
-    }
+    }, 500);
+
+    return () => clearTimeout(temporizador);
   }, [doc, store]);
 
-  const nodes: Node[] = useMemo(
+  const nodesFromDoc: Node[] = useMemo(
     () =>
       grafo.nodes.map((node) => ({
         ...node,
@@ -137,6 +152,29 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
       })),
     [grafo.nodes, selectedStepId, conectados],
   );
+
+  /**
+   * Buffer local para o arraste ficar fluido.
+   *
+   * `nodes` é controlado (vem do documento via `nodesFromDoc`), e o React Flow
+   * só anima a posição em tempo real se o array que ele recebe mudar a cada
+   * quadro do gesto. Sem isto, `onNodesChange` só grava no documento quando o
+   * arraste termina — e como nada mais atualizava `nodes` nesse meio tempo, o
+   * card ficava visualmente travado na posição antiga até soltar o clique.
+   *
+   * `nodesFromDoc` ainda é a fonte da verdade: sempre que o documento muda de
+   * verdade (edição da IA, undo, `set_flow_position` gravado), o buffer precisa
+   * resincronizar — sem isso, edições externas nunca apareceriam. Ajustado
+   * durante a renderização, não num efeito: um efeito rodaria um quadro depois,
+   * e o card piscaria na posição antiga antes de corrigir.
+   */
+  const [nodes, setNodes] = useState<Node[]>(nodesFromDoc);
+  const [nodesFromDocSincronizados, setNodesFromDocSincronizados] = useState(nodesFromDoc);
+
+  if (nodesFromDoc !== nodesFromDocSincronizados) {
+    setNodesFromDocSincronizados(nodesFromDoc);
+    setNodes(nodesFromDoc);
+  }
 
   const edges: Edge[] = useMemo(
     () =>
@@ -161,9 +199,14 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      // Aplica todo quadro do gesto no buffer local — é isso que faz o
+      // arraste deslizar junto com o cursor.
+      setNodes((atual) => applyNodeChanges(changes, atual));
+
       for (const change of changes) {
-        // Só grava quando o arraste termina: gravar a cada quadro encheria o
-        // histórico de undo com dezenas de passos de um movimento só.
+        // Só grava no documento quando o arraste termina: gravar a cada
+        // quadro encheria o histórico de undo com dezenas de passos de um
+        // movimento só.
         if (change.type === "position" && change.dragging === false && change.position) {
           dispatch(
             {
@@ -301,7 +344,17 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
       >
         <Background variant={BackgroundVariant.Dots} gap={22} size={1} className="fl-bg" />
         <Controls showInteractive={false} className="fl-controls" />
-        <MiniMap pannable zoomable className="fl-minimap" />
+        {/*
+          O tamanho tem que vir por `style`, não só por CSS: o MiniMap lê
+          `style.width`/`style.height` (não a caixa renderizada do DOM) para
+          calcular o próprio viewBox interno. Só com className, o SVG
+          continuava nascendo no tamanho padrão da biblioteca e a div
+          cortava o excesso — por isso o mapa parecia fora de centro. Também
+          mais largo que alto de propósito: um funil é uma cadeia comprida,
+          então o desenho real é bem mais largo que alto, e um viewBox
+          quadrado sobra muito espaço vazio em cima e embaixo.
+        */}
+        <MiniMap pannable zoomable className="fl-minimap" style={{ width: 220, height: 100 }} />
       </ReactFlow>
 
       <BarraDeAcoes
