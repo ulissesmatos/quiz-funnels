@@ -5,7 +5,15 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { Logo } from "@/components/brand/logo";
-import { Sidebar, SidebarFooter, SidebarHeader, SidebarNav, SidebarToggle, type SidebarNavItem } from "@/components/ui/sidebar";
+import {
+  MobileTopBar,
+  Sidebar,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarNav,
+  SidebarToggle,
+  type SidebarNavItem,
+} from "@/components/ui/sidebar";
 import { cn } from "@/lib/cn";
 
 import { AccountMenu } from "./account-menu";
@@ -46,28 +54,57 @@ export function AppSidebar({
     ...(isSuperAdmin ? [{ href: "/admin", label: "Admin", icon: <ShieldAlert size={16} className="shrink-0" /> }] : []),
   ];
 
+  const conta = (
+    <AccountMenu
+      userName={userName}
+      userEmail={userEmail}
+      userImage={userImage}
+      organizationName={organizationName}
+    />
+  );
+
+  const marca = (
+    <Link href="/funis" className="flex min-w-0 items-center gap-2">
+      <Logo className="h-8 w-8 shrink-0" />
+      <span className="truncate font-semibold">FunilQuiz</span>
+    </Link>
+  );
+
   return (
-    <Sidebar collapsed={collapsed}>
-      <SidebarToggle collapsed={collapsed} onToggle={toggle} />
+    <>
+      {/* Celular: barra compacta + gaveta. */}
+      <MobileTopBar brand={marca}>
+        {(fechar) => (
+          <>
+            <SidebarNav items={items} onNavigate={fechar} />
+            <SidebarFooter>{conta}</SidebarFooter>
+          </>
+        )}
+      </MobileTopBar>
 
-      <SidebarHeader>
-        <Link href="/funis" className="flex min-w-0 flex-1 items-center gap-2">
-          <Logo className="h-8 w-8 shrink-0" />
-          <span className={cn("truncate font-semibold", collapsed && "md:hidden")}>FunilQuiz</span>
-        </Link>
-      </SidebarHeader>
+      {/* Desktop: coluna fixa, recolhível. */}
+      <Sidebar collapsed={collapsed}>
+        <SidebarToggle collapsed={collapsed} onToggle={toggle} />
 
-      <SidebarNav items={items} collapsed={collapsed} />
+        <SidebarHeader>
+          <Link href="/funis" className="flex min-w-0 flex-1 items-center gap-2">
+            <Logo className="h-8 w-8 shrink-0" />
+            <span className={cn("truncate font-semibold", collapsed && "md:hidden")}>FunilQuiz</span>
+          </Link>
+        </SidebarHeader>
 
-      <SidebarFooter>
-        <AccountMenu
-          userName={userName}
-          userEmail={userEmail}
-          userImage={userImage}
-          organizationName={organizationName}
-          collapsed={collapsed}
-        />
-      </SidebarFooter>
-    </Sidebar>
+        <SidebarNav items={items} collapsed={collapsed} />
+
+        <SidebarFooter>
+          <AccountMenu
+            userName={userName}
+            userEmail={userEmail}
+            userImage={userImage}
+            organizationName={organizationName}
+            collapsed={collapsed}
+          />
+        </SidebarFooter>
+      </Sidebar>
+    </>
   );
 }

@@ -25,7 +25,8 @@ export function AccountMenu({
   userEmail: string;
   userImage: string | null;
   organizationName: string;
-  collapsed: boolean;
+  /** Só existe no desktop: no celular a gaveta é sempre larga. */
+  collapsed?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);

@@ -1,7 +1,12 @@
-import { BarChart3, ExternalLink } from "lucide-react";
+import { BarChart3, ExternalLink, LayoutGrid } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader, PageShell } from "@/components/ui/page-shell";
+import { formatarData } from "@/lib/format";
 import { requireOrganization } from "@/server/auth/session";
 import { createFunnelAction } from "@/server/funnels/actions";
 import { listFunnels } from "@/server/funnels/queries";
@@ -15,32 +20,29 @@ export default async function FunisPage() {
   const items = await listFunnels(organization.id);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Meus funis</h1>
-          <p className="mt-1 text-sm text-app-muted">
-            {items.length === 0
-              ? "Nenhum funil ainda. Crie o primeiro abaixo."
-              : `${items.length} ${items.length === 1 ? "funil" : "funis"} nesta organização.`}
-          </p>
-        </div>
-
-        <CreateFunnelDialog action={createFunnelAction} />
-      </header>
+    <PageShell>
+      <PageHeader
+        title="Meus funis"
+        description={
+          items.length === 0
+            ? "Nenhum funil ainda. Crie o primeiro abaixo."
+            : `${items.length} ${items.length === 1 ? "funil" : "funis"} nesta organização.`
+        }
+        action={<CreateFunnelDialog action={createFunnelAction} />}
+      />
 
       {items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-app-border px-6 py-16 text-center">
-          <p className="text-app-muted">
-            Um funil começa com uma tela. Toque em &ldquo;Criar funil&rdquo; acima pra começar.
-          </p>
-        </div>
+        <EmptyState
+          icon={<LayoutGrid size={20} />}
+          title="Seu primeiro funil começa com uma tela"
+          description="Descreva o que você vende e deixe o copiloto montar o rascunho, ou comece do zero e construa tela por tela."
+        />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((funnel) => (
             <li key={funnel.id}>
-              <div className="group flex h-full flex-col rounded-2xl border border-app-border bg-app-surface p-4 transition-colors hover:border-app-primary/50">
-                <Link href={`/funis/${funnel.id}`} className="flex-1">
+              <Card padding="sm" interactive className="flex h-full flex-col">
+                <Link href={`/funis/${funnel.id}`} className="flex-1 rounded-lg">
                   <h2 className="font-medium">{funnel.name}</h2>
                   <p className="mt-1 text-xs text-app-muted">
                     {funnel.stepCount} {funnel.stepCount === 1 ? "tela" : "telas"} ·{" "}
@@ -48,8 +50,11 @@ export default async function FunisPage() {
                   </p>
                 </Link>
 
-                <div className="mt-4 flex items-center justify-between">
-                  <StatusBadge published={funnel.isPublished} />
+                <div className="mt-4 flex items-center justify-between gap-2">
+                  <Badge tone={funnel.isPublished ? "success" : "neutral"}>
+                    {funnel.isPublished ? "Publicado" : "Rascunho"}
+                  </Badge>
+
                   <div className="flex items-center gap-3">
                     <Link
                       href={`/funis/${funnel.id}/analytics`}
@@ -69,29 +74,11 @@ export default async function FunisPage() {
                     )}
                   </div>
                 </div>
-              </div>
+              </Card>
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </PageShell>
   );
-}
-
-function StatusBadge({ published }: { published: boolean }) {
-  return (
-    <span
-      className={
-        published
-          ? "rounded-full bg-app-success/15 px-2 py-0.5 text-xs text-app-success"
-          : "rounded-full bg-app-surface-2 px-2 py-0.5 text-xs text-app-muted"
-      }
-    >
-      {published ? "Publicado" : "Rascunho"}
-    </span>
-  );
-}
-
-function formatarData(date: Date): string {
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(date);
 }

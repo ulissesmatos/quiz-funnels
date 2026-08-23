@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 
+import { Card, CardHeader } from "@/components/ui/card";
+import { PageHeader, PageShell } from "@/components/ui/page-shell";
+import { formatarPreco } from "@/lib/format";
 import { requireOrganization } from "@/server/auth/session";
 import { getOrganizationSubscription } from "@/server/billing/queries";
 import { PLAN } from "@/server/billing/plan";
@@ -45,49 +48,48 @@ export default async function ConfiguracoesPage({ searchParams }: PageProps) {
       ? ({ tipo: "erro", texto: MENSAGENS_DE_ERRO[mp_erro] ?? "Não foi possível conectar." } as const)
       : undefined;
 
+  const opcoesDeFunil = funnels.map((f) => ({ id: f.id, name: f.name }));
+
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Configurações</h1>
-        <p className="mt-1 text-sm text-app-muted">Preferências gerais desta organização.</p>
-      </header>
+    <PageShell width="sm">
+      <PageHeader title="Configurações" description="Preferências gerais desta organização." />
 
-      <BillingSection
-        status={subscription?.status ?? null}
-        trialEndsAt={subscription?.trialEndsAt ?? null}
-        currentPeriodEnd={subscription?.currentPeriodEnd ?? null}
-        priceLabel={new Intl.NumberFormat("pt-BR", { style: "currency", currency: PLAN.currency }).format(
-          PLAN.priceCents / 100,
-        )}
-      />
+      {/* Todas as seções usam a mesma casca agora: antes, duas traziam o próprio
+          card, uma estava solta na página e duas não tinham card nenhum. */}
+      <div className="flex flex-col gap-6">
+        <BillingSection
+          status={subscription?.status ?? null}
+          trialEndsAt={subscription?.trialEndsAt ?? null}
+          currentPeriodEnd={subscription?.currentPeriodEnd ?? null}
+          priceLabel={formatarPreco(PLAN.priceCents, PLAN.currency)}
+        />
 
-      <section className="mb-6 rounded-2xl border border-app-border bg-app-surface p-5">
-        <h2 className="font-medium">Aparência do sistema</h2>
-        <p className="mt-1 text-sm text-app-muted">
-          Modo de cor do painel e do editor — a interface que você usa para montar os funis, não os
-          funis em si. Cada funil publicado tem o próprio tema, trocável na aba Tema do editor, e
-          nasce nesse mesmo modo por padrão até alguém trocar.
-        </p>
-        <div className="mt-4">
+        <Card>
+          <CardHeader
+            title="Aparência do sistema"
+            description="Modo de cor do painel e do editor — a interface que você usa para montar os funis, não os funis em si. Cada funil publicado tem o próprio tema, trocável na aba Tema do editor, e nasce nesse mesmo modo por padrão até alguém trocar."
+          />
           <ThemeModeForm inicial={defaultThemeMode} />
-        </div>
-      </section>
+        </Card>
 
-      <MercadoPagoSection
-        connected={mercadoPagoConnection !== null}
-        liveMode={mercadoPagoConnection?.liveMode ?? true}
-        mensagem={mercadoPagoMensagem}
-      />
+        <MercadoPagoSection
+          connected={mercadoPagoConnection !== null}
+          liveMode={mercadoPagoConnection?.liveMode ?? true}
+          mensagem={mercadoPagoMensagem}
+        />
 
-      <section className="mb-6">
-        <h2 className="mb-3 font-medium">Cupons de desconto</h2>
-        <CouponsManager coupons={coupons} funnels={funnels.map((f) => ({ id: f.id, name: f.name }))} />
-      </section>
+        {/* Sem `description` nestes dois: os próprios gerenciadores já abrem
+            com um parágrafo explicando o que é — repetir aqui duplicaria. */}
+        <Card>
+          <CardHeader title="Cupons de desconto" />
+          <CouponsManager coupons={coupons} funnels={opcoesDeFunil} />
+        </Card>
 
-      <section>
-        <h2 className="mb-3 font-medium">Webhooks</h2>
-        <WebhooksManager webhooks={webhooks} funnels={funnels.map((f) => ({ id: f.id, name: f.name }))} />
-      </section>
-    </div>
+        <Card>
+          <CardHeader title="Webhooks" />
+          <WebhooksManager webhooks={webhooks} funnels={opcoesDeFunil} />
+        </Card>
+      </div>
+    </PageShell>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { Select } from "@/components/ui/field";
+
 /** Select nativo que navega trocando `?funil=` — sem estado de cliente, a URL continua a fonte da verdade. */
 export function FunnelFilter({ funnels, current }: { funnels: { id: string; name: string }[]; current?: string }) {
   const router = useRouter();
@@ -17,11 +19,11 @@ export function FunnelFilter({ funnels, current }: { funnels: { id: string; name
   }
 
   return (
-    <select
+    <Select
       value={current ?? ""}
       onChange={(e) => onChange(e.target.value)}
       aria-label="Filtrar por funil"
-      className="h-9 rounded-lg border border-app-border bg-app-surface px-2.5 text-sm text-app-text focus:border-app-primary focus:outline-none"
+      className="h-9"
     >
       <option value="">Todos os funis</option>
       {funnels.map((funnel) => (
@@ -29,6 +31,6 @@ export function FunnelFilter({ funnels, current }: { funnels: { id: string; name
           {funnel.name}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }

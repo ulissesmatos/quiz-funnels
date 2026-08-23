@@ -1,8 +1,19 @@
+import { Users } from "lucide-react";
 import type { Metadata } from "next";
-import Link from "next/link";
-import type { ReactNode } from "react";
 
+import { Badge } from "@/components/ui/badge";
+import {
+  DataTable,
+  TableCell,
+  TableHead,
+  TableHeaderCell,
+  TableRow,
+} from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader, PageShell } from "@/components/ui/page-shell";
+import { Pagination } from "@/components/ui/pagination";
 import { RangeSwitcher } from "@/components/ui/range-switcher";
+import { formatarDataHora } from "@/lib/format";
 import type { RangeKey } from "@/server/analytics/queries";
 import { requireOrganization } from "@/server/auth/session";
 import { listFunnels } from "@/server/funnels/queries";
@@ -32,79 +43,77 @@ export default async function LeadsPage({ searchParams }: PageProps) {
 
   const totalPages = Math.max(1, Math.ceil(leads.total / LEADS_PAGE_SIZE));
 
-  return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Leads</h1>
-          <p className="mt-1 text-sm text-app-muted">
-            {leads.total === 0
-              ? "Nenhuma resposta capturada ainda neste recorte."
-              : `${leads.total} ${leads.total === 1 ? "resposta" : "respostas"} capturadas.`}
-          </p>
-        </div>
+  /** Mantém funil e período ao trocar de página — sem isso a paginação zera o filtro. */
+  function hrefDaPagina(destino: number) {
+    const params = new URLSearchParams();
+    if (funil) params.set("funil", funil);
+    params.set("range", rangeKey);
+    params.set("page", String(destino));
+    return `?${params.toString()}`;
+  }
 
-        <div className="flex flex-wrap items-center gap-2">
-          <FunnelFilter funnels={funnels.map((f) => ({ id: f.id, name: f.name }))} current={funil} />
-          <RangeSwitcher current={rangeKey} extraParams={{ funil }} />
-        </div>
-      </header>
+  return (
+    <PageShell>
+      <PageHeader
+        title="Leads"
+        description={
+          leads.total === 0
+            ? "Nenhuma resposta capturada ainda neste recorte."
+            : `${leads.total} ${leads.total === 1 ? "resposta" : "respostas"} capturadas.`
+        }
+        action={
+          <>
+            <FunnelFilter funnels={funnels.map((f) => ({ id: f.id, name: f.name }))} current={funil} />
+            <RangeSwitcher current={rangeKey} extraParams={{ funil }} />
+          </>
+        }
+      />
 
       {leads.items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-app-border px-6 py-16 text-center">
-          <p className="text-app-muted">
-            {funnels.length === 0
-              ? "Crie um funil e publique-o para começar a capturar leads."
-              : "Nenhuma resposta neste recorte ainda."}
-          </p>
-        </div>
+        <EmptyState
+          icon={<Users size={20} />}
+          title="Nenhuma resposta neste recorte"
+          description={
+            funnels.length === 0
+              ? "Crie um funil e publique para começar a capturar leads."
+              : "Tente ampliar o período ou remover o filtro de funil."
+          }
+        />
       ) : (
         <>
-          <div className="overflow-x-auto rounded-2xl border border-app-border">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-app-border bg-app-surface-2 text-xs text-app-muted">
-                  <th className="px-4 py-2.5 font-medium">Contato</th>
-                  <th className="px-4 py-2.5 font-medium">Funil</th>
-                  <th className="px-4 py-2.5 font-medium">Respostas</th>
-                  <th className="px-4 py-2.5 font-medium">Pontuação</th>
-                  <th className="px-4 py-2.5 font-medium">Status</th>
-                  <th className="px-4 py-2.5 font-medium">Data</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leads.items.map((lead) => (
-                  <LeadRow key={lead.id} lead={lead} />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable>
+            <TableHead>
+              <tr>
+                <TableHeaderCell>Contato</TableHeaderCell>
+                <TableHeaderCell>Funil</TableHeaderCell>
+                <TableHeaderCell>Respostas</TableHeaderCell>
+                <TableHeaderCell>Pontuação</TableHeaderCell>
+                <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell>Data</TableHeaderCell>
+              </tr>
+            </TableHead>
+            <tbody>
+              {leads.items.map((lead) => (
+                <LeadRow key={lead.id} lead={lead} />
+              ))}
+            </tbody>
+          </DataTable>
 
-          {totalPages > 1 && (
-            <div className="mt-4 flex items-center justify-center gap-3 text-sm">
-              <PageLink page={page - 1} disabled={page <= 1} funil={funil} range={rangeKey}>
-                Anterior
-              </PageLink>
-              <span className="text-app-muted">
-                Página {page} de {totalPages}
-              </span>
-              <PageLink page={page + 1} disabled={page >= totalPages} funil={funil} range={rangeKey}>
-                Próxima
-              </PageLink>
-            </div>
-          )}
+          <Pagination page={page} totalPages={totalPages} construirHref={hrefDaPagina} />
         </>
       )}
-    </div>
+    </PageShell>
   );
 }
 
 function LeadRow({ lead }: { lead: LeadListItem }) {
   const contato = [lead.contato.nome, lead.contato.email, lead.contato.telefone].filter(Boolean);
+  const resumo = resumoDeRespostas(lead);
+  const completo = lead.completedAt !== null;
 
   return (
-    <tr className="border-b border-app-border last:border-0 hover:bg-app-surface-2/50">
-      <td className="px-4 py-3 align-top">
+    <TableRow>
+      <TableCell>
         {contato.length > 0 ? (
           <div className="flex flex-col gap-0.5">
             {contato.map((valor) => (
@@ -116,68 +125,24 @@ function LeadRow({ lead }: { lead: LeadListItem }) {
         ) : (
           <span className="text-app-muted">Sem dado de contato</span>
         )}
-      </td>
-      <td className="px-4 py-3 align-top text-app-muted">{lead.funnelName}</td>
-      <td className="max-w-72 px-4 py-3 align-top text-app-muted">
-        <span className="line-clamp-2" title={resumoDeRespostas(lead)}>
-          {resumoDeRespostas(lead) || "—"}
+      </TableCell>
+      <TableCell className="text-app-muted">{lead.funnelName}</TableCell>
+      <TableCell className="max-w-72 text-app-muted">
+        <span className="line-clamp-2" title={resumo}>
+          {resumo || "—"}
         </span>
-      </td>
-      <td className="px-4 py-3 align-top text-app-text tabular-nums">{lead.scoreTotal}</td>
-      <td className="px-4 py-3 align-top">
-        <StatusBadge completo={lead.completedAt !== null} outcomeId={lead.outcomeId} />
-      </td>
-      <td className="px-4 py-3 align-top whitespace-nowrap text-app-muted">{formatarData(lead.createdAt)}</td>
-    </tr>
-  );
-}
-
-function StatusBadge({ completo, outcomeId }: { completo: boolean; outcomeId: string | null }) {
-  return (
-    <span
-      className={
-        completo
-          ? "rounded-full bg-app-success/15 px-2 py-0.5 text-xs whitespace-nowrap text-app-success"
-          : "rounded-full bg-app-surface-2 px-2 py-0.5 text-xs whitespace-nowrap text-app-muted"
-      }
-      title={outcomeId ? `Resultado: ${outcomeId}` : undefined}
-    >
-      {completo ? "Completo" : "Incompleto"}
-    </span>
-  );
-}
-
-function PageLink({
-  page,
-  disabled,
-  funil,
-  range,
-  children,
-}: {
-  page: number;
-  disabled: boolean;
-  funil?: string;
-  range: RangeKey;
-  children: ReactNode;
-}) {
-  if (disabled) {
-    return (
-      <span className="rounded-lg border border-app-border px-3 py-1.5 text-app-muted opacity-40">{children}</span>
-    );
-  }
-
-  const params = new URLSearchParams();
-  if (funil) params.set("funil", funil);
-  params.set("range", range);
-  params.set("page", String(page));
-
-  return (
-    <Link
-      href={`?${params.toString()}`}
-      className="rounded-lg border border-app-border px-3 py-1.5 transition-colors hover:border-app-primary/60 hover:text-app-text"
-    >
-      {children}
-    </Link>
+      </TableCell>
+      <TableCell className="text-app-text tabular-nums">{lead.scoreTotal}</TableCell>
+      <TableCell>
+        <Badge
+          tone={completo ? "success" : "neutral"}
+          title={lead.outcomeId ? `Resultado: ${lead.outcomeId}` : undefined}
+        >
+          {completo ? "Completo" : "Incompleto"}
+        </Badge>
+      </TableCell>
+      <TableCell className="whitespace-nowrap text-app-muted">{formatarDataHora(lead.createdAt)}</TableCell>
+    </TableRow>
   );
 }
 
@@ -198,13 +163,4 @@ function resumoDeRespostas(lead: LeadListItem): string {
 function formatarValor(valor: unknown): string {
   if (Array.isArray(valor)) return valor.map(String).join(", ");
   return String(valor);
-}
-
-function formatarData(date: Date): string {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
 }

@@ -92,6 +92,11 @@ export function Topbar({
             key={chave}
             type="button"
             onClick={() => onVistaChange(chave)}
+            // O rótulo some abaixo de `sm`, então sem `aria-label` estes viram
+            // dois botões sem nome nenhum no celular — só o ícone, que leitor
+            // de tela não lê.
+            aria-label={rotulo}
+            aria-pressed={vista === chave}
             className={cn(
               "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs transition-colors",
               vista === chave
