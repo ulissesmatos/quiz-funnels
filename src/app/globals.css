@@ -19,6 +19,8 @@
   --color-app-primary-hover: #7d5ff7;
   --color-app-danger: #ef4444;
   --color-app-success: #22c55e;
+  /* Estados intermediários: assinatura atrasada, domínio não verificado. */
+  --color-app-warning: #f59e0b;
 
   /* Paleta exclusiva da landing. O azul conduz a marca; os demais tons
      entram somente como apoio, preservando a leitura limpa do produto. */
@@ -46,6 +48,43 @@
   --color-chart-6: #008300;
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /**
+   * Elevação do shell. O Tailwind traz uma escala própria calibrada para fundo
+   * claro, que some num app escuro; estas usam preto puro com alfa alto para
+   * continuarem legíveis sobre `--color-app-surface`.
+   */
+  --shadow-app-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-app-md: 0 8px 24px rgba(0, 0, 0, 0.32);
+  --shadow-app-lg: 0 20px 60px rgba(0, 0, 0, 0.45);
+
+  /**
+   * Animações do copiloto. Declaradas aqui para virarem utilitárias
+   * (`animate-shimmer`), e o Tailwind só emite os keyframes se alguma classe
+   * for realmente usada — nada disso chega ao funil publicado sem uso explícito.
+   */
+  --animate-shimmer: shimmer 2.2s linear infinite;
+  --animate-rise: rise 0.24s ease-out;
+
+  @keyframes shimmer {
+    from {
+      background-position: 200% center;
+    }
+    to {
+      background-position: -200% center;
+    }
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 }
 
 /**
@@ -68,6 +107,7 @@
     --color-app-primary-hover: #5a3aeb;
     --color-app-danger: #dc2626;
     --color-app-success: #16a34a;
+    --color-app-warning: #b45309;
 
     --color-chart-1: #2a78d6;
     --color-chart-2: #eb6834;
@@ -75,6 +115,10 @@
     --color-chart-4: #eda100;
     --color-chart-5: #e87ba4;
     --color-chart-6: #008300;
+
+    --shadow-app-sm: 0 1px 2px rgba(16, 20, 40, 0.06);
+    --shadow-app-md: 0 8px 24px rgba(16, 20, 40, 0.08);
+    --shadow-app-lg: 0 20px 60px rgba(16, 20, 40, 0.12);
   }
 }
 
@@ -89,6 +133,7 @@
   --color-app-primary-hover: #5a3aeb;
   --color-app-danger: #dc2626;
   --color-app-success: #16a34a;
+  --color-app-warning: #b45309;
 
   --color-chart-1: #2a78d6;
   --color-chart-2: #eb6834;
@@ -96,6 +141,10 @@
   --color-chart-4: #eda100;
   --color-chart-5: #e87ba4;
   --color-chart-6: #008300;
+
+  --shadow-app-sm: 0 1px 2px rgba(16, 20, 40, 0.06);
+  --shadow-app-md: 0 8px 24px rgba(16, 20, 40, 0.08);
+  --shadow-app-lg: 0 20px 60px rgba(16, 20, 40, 0.12);
 }
 
 html,
