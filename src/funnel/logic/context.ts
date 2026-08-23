@@ -54,7 +54,7 @@ export function createContext(
   };
 }
 
-function buildOptionLabels(doc: FunnelDocument): Record<string, Record<string, string>> {
+export function buildOptionLabels(doc: FunnelDocument): Record<string, Record<string, string>> {
   const labels: Record<string, Record<string, string>> = {};
 
   for (const step of doc.steps) {

@@ -611,6 +611,115 @@ describe("container com filhos já populados", () => {
   });
 });
 
+describe("add_step em lote (blocks)", () => {
+  it("cria a tela e todos os blocos numa chamada só", () => {
+    const resultado = aplicarChamadaDaIa(base, "add_step", {
+      name: "Tela em lote",
+      type: "content",
+      blocks: [
+        { type: "heading", props: { text: "Título", level: 1 } },
+        { type: "text", props: { text: "Texto" } },
+        { type: "button", props: { label: "Continuar", action: { kind: "next" } } },
+      ],
+    });
+
+    expect(resultado.ok, resultado.ok ? "" : resultado.error).toBe(true);
+    if (!resultado.ok) return;
+
+    const step = resultado.doc.steps.find((s) => s.id === "step_tela_em_lote");
+    expect(step?.blocks).toHaveLength(3);
+    expect(resultado.blocosTocados).toHaveLength(3);
+    expect(parseFunnelDocument(resultado.doc).success).toBe(true);
+  });
+
+  it("um bloco inválido no lote recusa a chamada inteira, sem criar a tela", () => {
+    const resultado = aplicarChamadaDaIa(base, "add_step", {
+      name: "Tela quebrada",
+      type: "content",
+      blocks: [
+        { type: "heading", props: { text: "Título", level: 1 } },
+        { type: "heading", props: { texto: "nome de prop errado" } },
+      ],
+    });
+
+    expect(resultado.ok).toBe(false);
+    if (resultado.ok) return;
+
+    expect(resultado.error).toContain("Bloco 2");
+    // Tudo ou nada: a tela não deve ter sido criada.
+    expect(base.steps.some((s) => s.name === "Tela quebrada")).toBe(false);
+  });
+
+  it("dedupa nome de campo entre dois blocos do mesmo lote", () => {
+    const resultado = aplicarChamadaDaIa(base, "add_step", {
+      name: "Duas perguntas",
+      type: "content",
+      blocks: [
+        {
+          type: "input",
+          props: { name: "contato", inputType: "email", required: true },
+        },
+        {
+          type: "input",
+          props: { name: "contato", inputType: "tel", required: true },
+        },
+      ],
+    });
+
+    expect(resultado.ok, resultado.ok ? "" : resultado.error).toBe(true);
+    if (!resultado.ok) return;
+
+    const step = resultado.doc.steps.find((s) => s.id === "step_duas_perguntas");
+    const nomes = step?.blocks.map((b) => (b.type === "input" ? b.props.name : null));
+    expect(new Set(nomes).size).toBe(2);
+    expect(parseFunnelDocument(resultado.doc).success).toBe(true);
+  });
+});
+
+describe("add_blocks", () => {
+  it("acrescenta vários blocos de uma vez a uma tela existente", () => {
+    const resultado = aplicarChamadaDaIa(base, "add_blocks", {
+      stepId: "step_inicio",
+      blocks: [
+        { type: "text", props: { text: "Primeiro" } },
+        { type: "text", props: { text: "Segundo" } },
+      ],
+    });
+
+    expect(resultado.ok, resultado.ok ? "" : resultado.error).toBe(true);
+    if (!resultado.ok) return;
+
+    expect(resultado.blocosTocados).toHaveLength(2);
+    const step = resultado.doc.steps.find((s) => s.id === "step_inicio");
+    const idsNaTela = new Set(step?.blocks.map((b) => b.id));
+    for (const id of resultado.blocosTocados) expect(idsNaTela.has(id)).toBe(true);
+    expect(parseFunnelDocument(resultado.doc).success).toBe(true);
+  });
+
+  it("recusa tela inexistente", () => {
+    const resultado = aplicarChamadaDaIa(base, "add_blocks", {
+      stepId: "step_inventado",
+      blocks: [{ type: "text", props: { text: "oi" } }],
+    });
+
+    expect(resultado.ok).toBe(false);
+  });
+
+  it("um bloco inválido no meio do lote recusa a chamada inteira", () => {
+    const resultado = aplicarChamadaDaIa(base, "add_blocks", {
+      stepId: "step_inicio",
+      blocks: [
+        { type: "text", props: { text: "Válido" } },
+        { type: "carrossel_magico", props: {} },
+      ],
+    });
+
+    expect(resultado.ok).toBe(false);
+    if (resultado.ok) return;
+    expect(resultado.error).toContain("Bloco 2");
+  });
+});
+
 describe("condições achatadas", () => {
   it("uma regra só não vira grupo desnecessário", () => {
     const condicao = converterCondicao({

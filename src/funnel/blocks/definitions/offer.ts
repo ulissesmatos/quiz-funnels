@@ -57,6 +57,92 @@ export const pricingBlock = defineBlock({
   },
 });
 
+const OrderBump = z
+  .object({
+    title: z.string().min(1).describe("Nome da oferta adicional, ex.: 'Adicione o guia de receitas'"),
+    description: z.string().optional(),
+    amountCents: z.number().int().min(100).describe("Preço em centavos, somado ao pedido quando marcado"),
+  })
+  .strict();
+
+export const checkoutBlock = defineBlock({
+  type: "checkout",
+  label: "Checkout",
+  category: "acao",
+  icon: "CreditCard",
+  description:
+    "Cobra de verdade dentro do funil — cartão, PIX e boleto via Mercado Pago, sem sair da tela. Precisa que a organização já tenha conectado o Mercado Pago em Configurações; sem isso, o bloco mostra só um aviso, visível apenas para quem está editando. Use como o último passo da oferta, depois do `pricing` — o preço ali é só vitrine, quem cobra de verdade é este bloco.",
+  props: z
+    .object({
+      title: z.string().min(1).describe("Nome do produto/oferta, exibido acima do formulário de pagamento"),
+      description: z.string().optional(),
+      amountCents: z.number().int().min(100).describe("Preço em centavos — 3990 significa R$ 39,90"),
+      allowCoupon: z.boolean().describe("Mostra um campo para digitar cupom de desconto antes de pagar"),
+      bump: OrderBump.optional().describe(
+        "Oferta adicional de 1 clique, com checkbox dentro do próprio checkout — some ao total quando a pessoa marca. Use para um item barato e complementar, nunca o produto principal.",
+      ),
+      onSuccess: BlockAction.describe(
+        "Ação ao aprovar o pagamento — normalmente avança para uma tela de agradecimento. PIX e boleto compensam depois, então isto dispara na confirmação, não necessariamente na hora.",
+      ),
+    })
+    .strict(),
+  defaults: {
+    title: "Plano completo",
+    amountCents: 3990,
+    allowCoupon: true,
+    onSuccess: { kind: "next" },
+  },
+  example: {
+    title: "Plano Premium — 12 semanas",
+    description: "Acompanhamento completo com ajustes semanais",
+    bump: {
+      title: "Adicione o guia de receitas rápidas",
+      description: "20 receitas prontas para os dias corridos",
+      amountCents: 1490,
+    },
+    amountCents: 3990,
+    allowCoupon: true,
+    onSuccess: { kind: "next" },
+  },
+});
+
+export const upsellBlock = defineBlock({
+  type: "upsell",
+  label: "Upsell 1-clique",
+  category: "acao",
+  icon: "Zap",
+  description:
+    "Oferece um produto extra logo depois de uma compra aprovada, cobrando o MESMO cartão sem pedir dado nenhum de novo — só funciona quando a tela de checkout anterior nesta sessão foi paga no cartão. Se a compra anterior foi por PIX/boleto, ou não há compra nesta sessão, o bloco mostra que a oferta não está disponível em vez de um formulário novo — 1-clique de verdade não existe pra PIX/boleto. Use como a tela seguinte a um `checkout`, nunca antes dele.",
+  props: z
+    .object({
+      title: z.string().min(1).describe("Nome do produto extra"),
+      description: z.string().optional(),
+      amountCents: z.number().int().min(100).describe("Preço em centavos — 1990 significa R$ 19,90"),
+      acceptLabel: z.string().min(1).describe("Texto do botão de aceitar, ex.: 'Sim, quero também!'"),
+      declineLabel: z.string().min(1).describe("Texto do link de recusar"),
+      onAccept: BlockAction.describe("Ação ao aprovar a cobrança extra"),
+      onDecline: BlockAction.describe("Ação ao recusar a oferta"),
+    })
+    .strict(),
+  defaults: {
+    title: "Adicione também",
+    amountCents: 1990,
+    acceptLabel: "Sim, quero também!",
+    declineLabel: "Não, obrigado",
+    onAccept: { kind: "next" },
+    onDecline: { kind: "next" },
+  },
+  example: {
+    title: "Acesso vitalício às atualizações",
+    description: "Pague uma vez, receba toda atualização futura sem custo extra",
+    amountCents: 2990,
+    acceptLabel: "Sim, quero acesso vitalício!",
+    declineLabel: "Não, só o que já comprei",
+    onAccept: { kind: "next" },
+    onDecline: { kind: "next" },
+  },
+});
+
 export const guaranteeBlock = defineBlock({
   type: "guarantee",
   label: "Garantia",

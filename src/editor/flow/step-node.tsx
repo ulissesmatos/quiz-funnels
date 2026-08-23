@@ -18,7 +18,7 @@ import { corDeOrigem, type StepNodeData } from "./graph";
  * lint encontrou nela.
  */
 export function StepNode({ data, selected }: NodeProps & { data: StepNodeData }) {
-  const { step, index, resumo, problemas, condicionaisCount, personalizando } = data;
+  const { step, index, resumo, problemas, condicionaisCount, personalizando, iaOcupada } = data;
 
   const temErro = problemas.some((p) => p.severity === "erro");
   const ramificacoes = step.logic.rules.length;
@@ -46,7 +46,7 @@ export function StepNode({ data, selected }: NodeProps & { data: StepNodeData })
               personalizando ? `Personalizando "${step.name}"…` : `Personalizar "${step.name}" com IA`
             }
             title={personalizando ? "Personalizando…" : "Personalizar com IA"}
-            disabled={personalizando}
+            disabled={Boolean(iaOcupada)}
             onClick={(evento) => {
               evento.stopPropagation();
               data.onFocarIa!(step.id);

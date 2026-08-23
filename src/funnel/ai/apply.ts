@@ -38,11 +38,12 @@ export function aplicarChamadaDaIa(
   try {
     switch (nome) {
       case "add_step": {
-        const { name, type, afterStepId, id } = entrada as {
+        const { name, type, afterStepId, id, blocks } = entrada as {
           name: string;
           type: Step["type"];
           afterStepId?: string;
           id?: string;
+          blocks?: { type: string; props: Record<string, unknown>; id?: string }[];
         };
 
         if (afterStepId && !doc.steps.some((s) => s.id === afterStepId)) {
@@ -52,7 +53,32 @@ export function aplicarChamadaDaIa(
         const step = createStep(doc, type, name);
         if (id) step.id = id;
 
-        return concluir(doc, { type: "add_step", step, afterStepId }, `Tela "${name}" criada`, []);
+        const montados: Block[] = [];
+
+        if (blocks && blocks.length > 0) {
+          const idsUsados = collectBlockIds(doc);
+          const nomesUsados = collectAnswerNames(doc);
+
+          for (const [i, item] of blocks.entries()) {
+            const resultado = montarBloco(idsUsados, nomesUsados, item.type, item.props, item.id);
+            if (!resultado.ok) {
+              return { ok: false, error: `Bloco ${i + 1} (${item.type}) de "${name}": ${resultado.error}` };
+            }
+            montados.push(resultado.block);
+          }
+
+          step.blocks = montados as Step["blocks"];
+        }
+
+        const resumo =
+          montados.length > 0 ? `Tela "${name}" criada com ${montados.length} bloco(s)` : `Tela "${name}" criada`;
+
+        return concluir(
+          doc,
+          { type: "add_step", step, afterStepId },
+          resumo,
+          montados.map((b) => b.id),
+        );
       }
 
       case "update_step": {
@@ -154,28 +180,54 @@ export function aplicarChamadaDaIa(
         const step = doc.steps.find((s) => s.id === stepId);
         if (!step) return { ok: false, error: `A tela "${stepId}" não existe.` };
 
-        const definition = getBlockDefinition(type);
-        if (!definition) {
-          return { ok: false, error: `Não existe bloco do tipo "${type}".` };
-        }
-
-        const validacao = definition.props.safeParse(props);
-        if (!validacao.success) {
-          return { ok: false, error: descreverErro(type, validacao.error.issues) };
-        }
-
-        const blockId = escolherId(doc, id ?? `blk_${slugifyId(type)}`);
-        const block = { id: blockId, type, props: validacao.data } as Block;
-
-        garantirNomeUnicoDeCampo(doc, block);
-        garantirBlocosUnicosDoContainer(doc, block);
+        const resultado = montarBloco(collectBlockIds(doc), collectAnswerNames(doc), type, props, id);
+        if (!resultado.ok) return { ok: false, error: resultado.error };
 
         return concluir(
           doc,
-          { type: "add_block", stepId, block, index },
+          { type: "add_block", stepId, block: resultado.block, index },
           `Bloco ${type} adicionado em "${step.name}"`,
-          [blockId],
+          [resultado.block.id],
         );
+      }
+
+      case "add_blocks": {
+        const { stepId, blocks, index } = entrada as {
+          stepId: string;
+          blocks: { type: string; props: Record<string, unknown>; id?: string }[];
+          index?: number;
+        };
+
+        const step = doc.steps.find((s) => s.id === stepId);
+        if (!step) return { ok: false, error: `A tela "${stepId}" não existe.` };
+
+        const idsUsados = collectBlockIds(doc);
+        const nomesUsados = collectAnswerNames(doc);
+        const montados: Block[] = [];
+
+        for (const [i, item] of blocks.entries()) {
+          const resultado = montarBloco(idsUsados, nomesUsados, item.type, item.props, item.id);
+          if (!resultado.ok) return { ok: false, error: `Bloco ${i + 1} (${item.type}): ${resultado.error}` };
+          montados.push(resultado.block);
+        }
+
+        // Cada bloco entra como sua própria operação `add_block` (mesmo op que
+        // já existe em `ops.ts`) — não precisa de um `FunnelOp` novo só para o
+        // lote. `cursor` avança junto para os blocos entrarem na ordem em que
+        // vieram, e não todos empilhados na mesma posição.
+        let proximo = doc;
+        let cursor = index;
+        for (const block of montados) {
+          proximo = applyOp(proximo, { type: "add_block", stepId, block, index: cursor });
+          if (cursor !== undefined) cursor += 1;
+        }
+
+        return {
+          ok: true,
+          doc: proximo,
+          resumo: `${montados.length} bloco(s) adicionados em "${step.name}"`,
+          blocosTocados: montados.map((b) => b.id),
+        };
       }
 
       case "update_block": {
@@ -477,61 +529,63 @@ export function converterCondicao(condicao: AiCondition): Condition {
   return { kind: condicao.match, conditions: folhas };
 }
 
-function escolherId(doc: FunnelDocument, sugerido: string): string {
-  const usados = collectBlockIds(doc);
-  if (!usados.has(sugerido)) return sugerido;
-
-  for (let n = 2; n < 500; n++) {
-    const candidato = `${sugerido}_${n}`;
-    if (!usados.has(candidato)) return candidato;
-  }
-
-  return `${sugerido}_${Date.now()}`;
-}
+type ResultadoDeBloco = { ok: true; block: Block } | { ok: false; error: string };
 
 /**
- * Dois campos com o mesmo `name` gravariam na mesma chave e um apagaria o
- * outro. A IA erra nisso com frequência ao repetir um exemplo, então corrigimos
- * em silêncio em vez de recusar a operação.
+ * Monta e valida um bloco a partir do tipo/props que a IA mandou — o núcleo
+ * compartilhado por `add_block`, `add_step` (quando vem com `blocks`) e
+ * `add_blocks`.
+ *
+ * `idsUsados`/`nomesUsados` são mutados: cada bloco (e cada filho de
+ * container) que sai daqui entra nos dois sets, para que o próximo bloco do
+ * mesmo lote também dedupe contra ele — não só contra o que já existia no
+ * documento antes da chamada. Um container pode chegar com `children` já
+ * populado (a IA monta colunas inteiras numa chamada só): sem deduplicar
+ * também os filhos, dois com o mesmo id ou o mesmo nome de campo colidiriam em
+ * silêncio — `findBlock` acha só o primeiro, e o segundo vira inalcançável por
+ * qualquer `update_block`/`remove_block` futuro que tente chegar nele pelo id
+ * duplicado.
  */
-function garantirNomeUnicoDeCampo(doc: FunnelDocument, block: Block) {
-  if (block.type !== "choice" && block.type !== "input") return;
+function montarBloco(
+  idsUsados: Set<string>,
+  nomesUsados: Set<string>,
+  type: string,
+  props: Record<string, unknown>,
+  idSugerido?: string,
+): ResultadoDeBloco {
+  const definition = getBlockDefinition(type);
+  if (!definition) {
+    return { ok: false, error: `Não existe bloco do tipo "${type}".` };
+  }
 
-  const usados = collectAnswerNames(doc);
-  if (!usados.has(block.props.name)) return;
+  const validacao = definition.props.safeParse(props);
+  if (!validacao.success) {
+    return { ok: false, error: descreverErro(type, validacao.error.issues) };
+  }
 
-  for (let n = 2; n < 500; n++) {
-    const candidato = `${block.props.name}_${n}`;
-    if (!usados.has(candidato)) {
-      block.props.name = candidato;
-      return;
+  const blockId = uniqueId(idSugerido ?? `blk_${slugifyId(type)}`, idsUsados);
+  idsUsados.add(blockId);
+
+  const block = { id: blockId, type, props: validacao.data } as Block;
+
+  if (block.type === "choice" || block.type === "input") {
+    block.props.name = uniqueId(block.props.name, nomesUsados);
+    nomesUsados.add(block.props.name);
+  }
+
+  if (isContainer(block)) {
+    for (const child of block.props.children) {
+      child.id = uniqueId(child.id, idsUsados);
+      idsUsados.add(child.id);
+
+      if (child.type === "choice" || child.type === "input") {
+        child.props.name = uniqueId(child.props.name, nomesUsados);
+        nomesUsados.add(child.props.name);
+      }
     }
   }
-}
 
-/**
- * Um container pode chegar com `children` já populado — a IA monta colunas
- * inteiras numa chamada só de `add_block`. `escolherId`/`garantirNomeUnicoDeCampo`
- * acima só cobrem o bloco de nível raiz: sem isto, dois filhos do mesmo
- * container com o mesmo id ou o mesmo nome de campo colidiriam em silêncio —
- * `findBlock` acha só o primeiro, e o segundo vira inalcançável por qualquer
- * `update_block`/`remove_block` futuro que tente chegar nele pelo id duplicado.
- */
-function garantirBlocosUnicosDoContainer(doc: FunnelDocument, block: Block) {
-  if (!isContainer(block)) return;
-
-  const idsUsados = collectBlockIds(doc);
-  const nomesUsados = collectAnswerNames(doc);
-
-  for (const child of block.props.children) {
-    child.id = uniqueId(child.id, idsUsados);
-    idsUsados.add(child.id);
-
-    if (child.type === "choice" || child.type === "input") {
-      child.props.name = uniqueId(child.props.name, nomesUsados);
-      nomesUsados.add(child.props.name);
-    }
-  }
+  return { ok: true, block };
 }
 
 function primeiroBlocoDeEscolha(step: Step, blockId?: string) {

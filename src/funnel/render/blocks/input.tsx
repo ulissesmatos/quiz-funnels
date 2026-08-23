@@ -3,6 +3,8 @@
 import { Check } from "lucide-react";
 import { useId } from "react";
 
+import { formatBrPhone } from "@/lib/phone";
+
 import type { PropsOf } from "../../schema/block";
 import { plainText } from "../rich-text";
 import { useFunnelRuntime } from "../runtime-context";
@@ -118,7 +120,10 @@ export function InputBlock({ props }: { props: PropsOf<"input"> }) {
     "aria-invalid": Boolean(error),
     value: value == null ? "" : String(value),
     onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-      if (interactive) setAnswer(props.name, event.target.value);
+      if (!interactive) return;
+      // Máscara progressiva só no tipo telefone — os demais gravam o valor cru.
+      const valor = props.inputType === "tel" ? formatBrPhone(event.target.value) : event.target.value;
+      setAnswer(props.name, valor);
     },
   };
 

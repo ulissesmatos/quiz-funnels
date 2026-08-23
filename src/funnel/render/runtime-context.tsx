@@ -39,6 +39,26 @@ export type FunnelRuntime = {
    * funil publicado. Sem essa distinção, o visitante lê instruções de edição.
    */
   mode: "publico" | "editor";
+
+  /**
+   * Presente só no funil publicado (`TrackedFunnelView`), nunca no editor —
+   * o bloco de Checkout depende disso pra saber a quem associar o pedido.
+   * `sessionId` é função, não valor: a sessão nasce numa `useEffect` do lado
+   * de fora, então lê-la só na hora de cobrar (não na hora de renderizar)
+   * evita depender de um valor que ainda não existiu no primeiro render.
+   */
+  tracking?: { funnelId: string; sessionId: () => string };
+
+  /** Public key da conta Mercado Pago conectada — ausente sem conexão feita. */
+  mercadoPagoPublicKey?: string;
+
+  /**
+   * Id do último pedido criado nesta sessão — o bloco de Upsell 1-clique lê
+   * isto pra saber em cima de qual compra cobrar. Baseado em ref (não state):
+   * guardar aqui nunca deve causar novo render, só registrar um fato pra uma
+   * tela futura consultar.
+   */
+  lastOrderId?: { get: () => string | null; set: (id: string) => void };
 };
 
 const RuntimeContext = createContext<FunnelRuntime | null>(null);

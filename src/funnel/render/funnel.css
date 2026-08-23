@@ -1161,6 +1161,120 @@ textarea.fn-input { min-height: 120px; resize: vertical; }
 
 .fn-pricing-features svg { flex-shrink: 0; margin-top: 3px; color: var(--fn-color-success); }
 
+/* ══ Checkout ═════════════════════════════════════════════════ */
+
+.fn-checkout {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  padding: var(--fn-space-md);
+  background: var(--fn-color-surface);
+  border: 2px solid var(--fn-color-border);
+  border-radius: var(--fn-radius-lg);
+}
+
+.fn-checkout-title { font-family: var(--fn-font-heading); font-size: var(--fn-text-lg); }
+.fn-checkout-desc { font-size: var(--fn-text-sm); color: var(--fn-color-muted); margin: 0; }
+
+.fn-checkout-price {
+  font-family: var(--fn-font-heading);
+  font-size: var(--fn-text-3xl);
+  font-weight: 800;
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.fn-checkout-price-riscado { font-size: var(--fn-text-base); font-weight: 400; color: var(--fn-color-muted); }
+
+.fn-checkout-aviso {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fn-text-sm);
+  color: var(--fn-color-muted);
+}
+
+.fn-checkout-preview { border-style: dashed; }
+.fn-checkout-sucesso { align-items: center; text-align: center; color: var(--fn-color-success); }
+
+.fn-checkout-bump {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px dashed var(--fn-color-border);
+  border-radius: var(--fn-radius-md);
+  cursor: pointer;
+}
+
+.fn-checkout-bump input[type="checkbox"] { margin-top: 3px; flex-shrink: 0; }
+.fn-checkout-bump-corpo { display: flex; flex-direction: column; gap: 2px; }
+.fn-checkout-bump-titulo { font-size: var(--fn-text-sm); font-weight: 600; }
+.fn-checkout-bump-desc { font-size: var(--fn-text-xs); color: var(--fn-color-muted); }
+
+.fn-checkout-cupom { display: flex; gap: 8px; }
+.fn-checkout-cupom .fn-input { flex: 1; padding: 10px 14px; }
+
+.fn-checkout-cupom-botao {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-radius: var(--fn-radius-md);
+  background: color-mix(in oklab, var(--fn-color-border) 25%, var(--fn-color-surface));
+  border: 2px solid var(--fn-color-border);
+  color: var(--fn-color-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.fn-checkout-cupom-ok { font-size: var(--fn-text-sm); color: var(--fn-color-success); margin: 0; }
+
+.fn-checkout-upsell-aceitar {
+  background: var(--fn-color-primary);
+  color: var(--fn-color-primary-fg);
+  border-color: var(--fn-color-primary);
+}
+
+.fn-checkout-upsell-recusar {
+  background: none;
+  border: none;
+  padding: 4px;
+  font: inherit;
+  font-size: var(--fn-text-sm);
+  color: var(--fn-color-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  align-self: center;
+}
+
+.fn-checkout-espera { align-items: center; text-align: center; }
+
+.fn-checkout-pix-qr {
+  width: 220px;
+  height: 220px;
+  border-radius: var(--fn-radius-md);
+  border: 1px solid var(--fn-color-border);
+}
+
+.fn-checkout-pix-codigo {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  font-size: var(--fn-text-xs);
+  word-break: break-all;
+  background: color-mix(in oklab, var(--fn-color-border) 25%, var(--fn-color-surface));
+  border: 1px solid var(--fn-color-border);
+  border-radius: var(--fn-radius-md);
+}
+
 /* ══ Garantia ═════════════════════════════════════════════════ */
 
 .fn-guarantee {

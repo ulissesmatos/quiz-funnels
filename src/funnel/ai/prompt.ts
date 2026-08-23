@@ -94,10 +94,17 @@ export function catalogoDeBlocos(): string {
     .join("\n\n");
 }
 
-export function buildSystemPrompt(
-  doc: FunnelDocument,
-  opts?: { silent?: boolean; thorough?: boolean },
-): string {
+/**
+ * Parte estática do prompt: instruções + catálogo de blocos.
+ *
+ * Nunca depende do documento — é byte-idêntica para o mesmo par
+ * `(silent, thorough)` em qualquer funil, usuário ou passo da conversa. É por
+ * isso que fica separada de `buildDynamicOutline`: só o que não muda entre
+ * passos pode carregar o breakpoint de cache do prompt (ver `route.ts`,
+ * `buildInstructions`) — colar o outline aqui dentro invalidaria o cache a
+ * cada chamada, porque o outline cresce a cada bloco/tela criado.
+ */
+export function buildStaticSystemPrompt(opts?: { silent?: boolean; thorough?: boolean }): string {
   const prompt = `Você é o copiloto de um construtor de funis de venda interativos. Você monta e edita funis chamando ferramentas — nunca descrevendo o que faria, com uma única exceção: o plano curto de "Planeje antes de construir", que vem em texto, antes das ferramentas.
 
 ## Como um bom funil é construído
@@ -203,7 +210,7 @@ Antes da primeira ferramenta de um funil novo (ou de uma mudança grande num exi
 
 ## Um erro no meio da construção nunca é motivo para recomeçar
 
-Percebeu que esqueceu um bloco, colocou na ordem errada, ou o conteúdo de uma tela já criada ficou errado? **Conserte só aquilo, com uma chamada.** \`add_block\` aceita \`index\` para inserir exatamente onde faltou; \`move_block\` reordena um bloco sem recriá-lo; \`update_block\` corrige conteúdo. Remover um bloco (ou uma tela) inteiros e recriá-los do zero para consertar um detalhe pequeno desperdiça chamadas e tempo à toa — reserve \`remove_block\`/\`remove_step\` para quando o bloco ou a tela realmente não devem mais existir.
+Percebeu que esqueceu um bloco, colocou na ordem errada, ou o conteúdo de uma tela já criada ficou errado? **Conserte só aquilo, com uma chamada.** \`add_block\` aceita \`index\` para inserir exatamente onde faltou; \`move_block\` reordena um bloco sem recriá-lo; \`update_block\` corrige conteúdo. Faltaram vários blocos de uma vez — por exemplo, o \`check_funnel\` apontou a oferta como rasa? Use \`add_blocks\` e acrescente todos numa chamada só, em vez de várias chamadas de \`add_block\` em sequência. Remover um bloco (ou uma tela) inteiros e recriá-los do zero para consertar um detalhe pequeno desperdiça chamadas e tempo à toa — reserve \`remove_block\`/\`remove_step\` para quando o bloco ou a tela realmente não devem mais existir.
 
 ## A ordem do fim do funil
 
@@ -259,12 +266,8 @@ Regras: cada bloco dentro de \`children\` precisa de \`id\` e \`props\` completo
 - \`fullHeight\` da tela começa \`true\` ao criar — mantenha assim em toda tela do tipo pergunta, é o que centraliza o conteúdo verticalmente. Desligue só em tela de conteúdo longo (FAQ extenso, oferta final densa, muitos depoimentos), e reavalie ao mudar o \`type\` de uma tela existente.
 - Ao adicionar um bloco, mande o objeto \`props\` completo, seguindo o exemplo do tipo. Props ausentes fazem a operação falhar e você recebe o erro de volta para corrigir.
 - Em \`update_block\`, mande só as props que mudam — elas são mescladas nas existentes.
-- Trabalhe em passos pequenos e encadeados: uma tela por vez, com seus blocos.
-- Ao terminar, responda em uma ou duas frases o que fez. Não repita o JSON.
-
-## Funil atual
-
-${outlineFunnel(doc)}`;
+- Ao criar uma tela nova, prefira montar a tela inteira numa chamada só de \`add_step\`, com todos os blocos dela em \`blocks\` — não crie a tela vazia e adicione um bloco por chamada depois. Para acrescentar vários blocos de uma vez a uma tela que já existe, use \`add_blocks\`; reserve \`add_block\` sozinho para um bloco avulso. Cada chamada tem um custo — montar tudo de uma vez é sempre preferível a repetir a mesma ferramenta várias vezes.
+- Ao terminar, responda em uma ou duas frases o que fez. Não repita o JSON.`;
 
   const blocosAdicionais: string[] = [];
 
@@ -289,4 +292,26 @@ Depois do plano aceito, construa seguindo exatamente o que planejou, sem desviar
   return `${prompt}
 
 ${blocosAdicionais.join("\n\n")}`;
+}
+
+/**
+ * Parte dinâmica do prompt: só o retrato do funil agora.
+ *
+ * É a única parte que muda entre passos de uma mesma resposta — fica de fora
+ * do bloco cacheado de propósito (ver `buildStaticSystemPrompt`).
+ */
+export function buildDynamicOutline(doc: FunnelDocument): string {
+  return `## Funil atual\n\n${outlineFunnel(doc)}`;
+}
+
+/**
+ * Mantida por compatibilidade: junta as duas partes numa string só.
+ * `route.ts` não usa esta função — monta as duas partes como mensagens de
+ * sistema separadas, para poder cachear só a estática (ver `buildInstructions`).
+ */
+export function buildSystemPrompt(
+  doc: FunnelDocument,
+  opts?: { silent?: boolean; thorough?: boolean },
+): string {
+  return `${buildStaticSystemPrompt(opts)}\n\n${buildDynamicOutline(doc)}`;
 }

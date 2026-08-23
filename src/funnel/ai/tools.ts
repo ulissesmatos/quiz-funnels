@@ -18,6 +18,15 @@ const BlockProps = z
   .record(z.string(), z.unknown())
   .describe("Objeto de props do bloco, no formato exato do exemplo daquele tipo");
 
+/** Um bloco a criar, no mesmo formato usado por `add_block` — reaproveitado em lote por `add_step` e `add_blocks`. */
+const BlockEmLote = z
+  .object({
+    type: z.string().describe("Tipo do bloco, ex.: heading, choice, button, loader, result"),
+    props: BlockProps,
+    id: SlugId.optional().describe("Id sugerido; se colidir, ganha sufixo automaticamente"),
+  })
+  .strict();
+
 /** Condição achatada: um nível de E/OU, sem aninhamento. */
 export const AiCondition = z
   .object({
@@ -52,6 +61,12 @@ export const aiToolSchemas = {
       id: SlugId.optional().describe(
         "Id explícito da tela. Se você vai referenciá-la por id em next, goto, rules ou branch_by_answer, informe aqui — sem isso o id sai do nome inteiro (ex.: 'Seu produto hoje' vira 'step_seu_produto_hoje', não 'step_produto'), e a referência quebra. Se colidir com um id existente, ganha sufixo automático.",
       ),
+      blocks: z
+        .array(BlockEmLote)
+        .optional()
+        .describe(
+          "Todos os blocos desta tela, na ordem em que entram. Prefira sempre preencher isto em vez de chamar add_block várias vezes depois — cria a tela inteira numa única chamada.",
+        ),
     })
     .strict(),
 
@@ -94,6 +109,22 @@ export const aiToolSchemas = {
           "Posição na tela; omitido, entra no fim. Notou que faltou um bloco numa tela que já montou? Insira aqui, na posição certa — não remova e recrie os blocos ao redor.",
         ),
       id: SlugId.optional().describe("Id sugerido; se colidir, ganha sufixo automaticamente"),
+    })
+    .strict(),
+
+  add_blocks: z
+    .object({
+      stepId: SlugId.describe("Tela que recebe os blocos"),
+      blocks: z
+        .array(BlockEmLote)
+        .min(1)
+        .describe("Blocos a acrescentar, na ordem em que entram."),
+      index: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe("Posição do primeiro bloco novo; os demais seguem em sequência. Omitido, todos entram no fim."),
     })
     .strict(),
 
@@ -254,12 +285,16 @@ export const aiToolSchemas = {
 export type AiToolName = keyof typeof aiToolSchemas;
 
 export const aiToolDescriptions: Record<AiToolName, string> = {
-  add_step: "Cria uma tela nova no funil.",
+  add_step:
+    "Cria uma tela nova no funil. Prefira preencher blocks com todos os blocos dela nesta mesma chamada, em vez de chamar add_block várias vezes depois.",
   update_step: "Altera nome, tipo ou layout de uma tela existente.",
   remove_step: "Remove uma tela. As regras que apontavam para ela são limpas.",
   move_step:
     "Muda a posição de uma tela na sequência. É como se conserta uma tela que ficou depois do fim do funil e por isso não é alcançada.",
-  add_block: "Adiciona um bloco a uma tela. Mande o objeto props completo do tipo escolhido.",
+  add_block:
+    "Adiciona um bloco avulso a uma tela. Mande o objeto props completo do tipo escolhido. Para vários blocos de uma vez, use blocks em add_step (tela nova) ou add_blocks (tela existente) — mais barato que várias chamadas.",
+  add_blocks:
+    "Acrescenta vários blocos de uma vez a uma tela que já existe — por exemplo ao encorpar a tela de oferta com pricing + guarantee + prova social juntos. Prefira esta ferramenta a várias chamadas de add_block em sequência.",
   update_block: "Altera props de um bloco existente. Mande só o que muda.",
   remove_block: "Remove um bloco.",
   move_block: "Move um bloco para outra posição ou outra tela.",

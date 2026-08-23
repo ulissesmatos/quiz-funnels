@@ -2,6 +2,7 @@
 
 import {
   ArrowLeft,
+  BarChart3,
   Check,
   CircleAlert,
   CloudAlert,
@@ -146,6 +147,15 @@ export function Topbar({
             <Monitor size={14} />
           </IconeDeAcao>
         </div>
+
+        <Link
+          href={`/funis/${funnelId}/analytics`}
+          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-app-muted hover:bg-app-surface-2 hover:text-app-text"
+          title="Ver analytics deste funil"
+        >
+          <BarChart3 size={15} />
+          <span className="hidden md:inline">Analytics</span>
+        </Link>
 
         <a
           href={`/f/${doc.slug}`}

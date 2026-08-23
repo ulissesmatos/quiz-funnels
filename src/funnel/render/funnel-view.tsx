@@ -2,11 +2,14 @@
 
 import { useCallback, useMemo, useRef, useState } from "react";
 
+import { isValidBrPhone } from "@/lib/phone";
+
 import { evaluateCondition } from "../logic/conditions";
 import { createContext, type AnswerValue, type FunnelContext } from "../logic/context";
 import { resolveNextStepId, stepIndexOf } from "../logic/routing";
 import { computeScores } from "../logic/scoring";
 import { walkBlocks, type Block } from "../schema/block";
+import type { BlockAction } from "../schema/common";
 import type { FunnelDocument } from "../schema/funnel";
 import type { Step } from "../schema/step";
 import { autoThemeCss, themeToCssVars } from "../theme/css";
@@ -19,6 +22,8 @@ import "./funnel.css";
 export type FunnelCompletion = {
   answers: Record<string, AnswerValue>;
   scores: Record<string, number>;
+  /** Step em que o funil terminou — fim natural do roteamento ou ação `submit`. */
+  endStepId: string;
 };
 
 export type FunnelViewProps = {
@@ -34,6 +39,14 @@ export type FunnelViewProps = {
   interactive?: boolean;
   onComplete?: (result: FunnelCompletion) => void;
   onStepChange?: (stepId: string) => void;
+  /** Cada gravação de resposta — telemetria usa para registrar o evento `answer`. */
+  onAnswer?: (name: string, value: AnswerValue) => void;
+  /** Ação de saída (link externo/WhatsApp), disparada antes de navegar. */
+  onExternalAction?: (action: Extract<BlockAction, { kind: "link" | "whatsapp" }>) => void;
+  /** Repassado ao runtime — ver `FunnelRuntime.tracking`. Ausente no editor. */
+  tracking?: { funnelId: string; sessionId: () => string };
+  /** Repassado ao runtime — ver `FunnelRuntime.mercadoPagoPublicKey`. */
+  mercadoPagoPublicKey?: string;
 };
 
 /**
@@ -55,6 +68,10 @@ export function FunnelView({
   interactive = true,
   onComplete,
   onStepChange,
+  onAnswer,
+  onExternalAction,
+  tracking,
+  mercadoPagoPublicKey,
 }: FunnelViewProps) {
   const firstStepId = doc.steps[0]?.id ?? "";
 
@@ -65,6 +82,13 @@ export function FunnelView({
 
   const answersRef = useRef(answers);
   const historyRef = useRef(history);
+  const lastOrderIdRef = useRef<string | null>(null);
+  const [lastOrderIdApi] = useState(() => ({
+    get: () => lastOrderIdRef.current,
+    set: (id: string) => {
+      lastOrderIdRef.current = id;
+    },
+  }));
 
   const currentStepId = forcedStepId ?? history[history.length - 1];
   const step = doc.steps.find((s) => s.id === currentStepId) ?? doc.steps[0];
@@ -98,9 +122,9 @@ export function FunnelView({
   );
 
   const finish = useCallback(
-    (snapshot: Record<string, AnswerValue>) => {
+    (snapshot: Record<string, AnswerValue>, endStepId: string) => {
       setCompleted(true);
-      onComplete?.({ answers: snapshot, scores: computeScores(doc, snapshot) });
+      onComplete?.({ answers: snapshot, scores: computeScores(doc, snapshot), endStepId });
     },
     [doc, onComplete],
   );
@@ -122,7 +146,7 @@ export function FunnelView({
 
       const nextId = resolveNextStepId(doc, fromStepId, ctx);
       if (!nextId) {
-        finish(snapshot);
+        finish(snapshot, fromStepId);
         return;
       }
 
@@ -131,17 +155,22 @@ export function FunnelView({
     [buildContext, doc, finish, forcedStepId, goTo],
   );
 
-  const setAnswer = useCallback((name: string, value: AnswerValue) => {
-    answersRef.current = { ...answersRef.current, [name]: value };
-    setAnswers(answersRef.current);
+  const setAnswer = useCallback(
+    (name: string, value: AnswerValue) => {
+      answersRef.current = { ...answersRef.current, [name]: value };
+      setAnswers(answersRef.current);
 
-    setErrors((current) => {
-      if (!(name in current)) return current;
-      const next = { ...current };
-      delete next[name];
-      return next;
-    });
-  }, []);
+      setErrors((current) => {
+        if (!(name in current)) return current;
+        const next = { ...current };
+        delete next[name];
+        return next;
+      });
+
+      onAnswer?.(name, value);
+    },
+    [onAnswer],
+  );
 
   /**
    * Grava a resposta e avança na mesma ação — o caminho do `autoAdvance`.
@@ -153,9 +182,10 @@ export function FunnelView({
       answersRef.current = snapshot;
       setAnswers(snapshot);
       setErrors({});
+      onAnswer?.(name, value);
       advance(snapshot);
     },
-    [advance],
+    [advance, onAnswer],
   );
 
   const next = useCallback(() => advance(answersRef.current), [advance]);
@@ -180,12 +210,13 @@ export function FunnelView({
           if (doc.steps.some((s) => s.id === action.stepId)) goTo(action.stepId);
           break;
         case "submit":
-          finish(answersRef.current);
+          finish(answersRef.current, currentStepId);
           break;
         case "link": {
           const ctx = buildContext(answersRef.current, currentStepId);
           const href = safeHref(interpolateUrl(action.url, ctx));
           if (!href) return;
+          onExternalAction?.(action);
           if (action.newTab) window.open(href, "_blank", "noopener");
           else window.location.href = href;
           break;
@@ -193,6 +224,7 @@ export function FunnelView({
         case "whatsapp": {
           const ctx = buildContext(answersRef.current, currentStepId);
           const text = encodeURIComponent(interpolateUrl(action.message, ctx));
+          onExternalAction?.(action);
           window.open(
             `https://wa.me/${action.phone.replace(/\D/g, "")}?text=${text}`,
             "_blank",
@@ -202,7 +234,7 @@ export function FunnelView({
         }
       }
     },
-    [back, buildContext, currentStepId, doc.steps, finish, goTo, next],
+    [back, buildContext, currentStepId, doc.steps, finish, goTo, next, onExternalAction],
   );
 
   const runtime: FunnelRuntime = useMemo(
@@ -217,8 +249,24 @@ export function FunnelView({
       interactive,
       mode: "publico",
       runAction,
+      tracking,
+      mercadoPagoPublicKey,
+      lastOrderId: lastOrderIdApi,
     }),
-    [answerAndAdvance, back, context, errors, history.length, interactive, next, runAction, setAnswer],
+    [
+      answerAndAdvance,
+      back,
+      context,
+      errors,
+      history.length,
+      interactive,
+      next,
+      runAction,
+      setAnswer,
+      tracking,
+      mercadoPagoPublicKey,
+      lastOrderIdApi,
+    ],
   );
 
   if (!step) return null;
@@ -242,7 +290,7 @@ export function FunnelView({
 
         {doc.settings.showBranding && (
           <p className="fn-branding">
-            Feito com <strong>Funis</strong>
+            Feito com <strong>FunilQuiz</strong>
           </p>
         )}
       </FunnelRuntimeProvider>
@@ -288,6 +336,14 @@ function findMissingRequired(step: Step, context: FunnelContext): Record<string,
       !isValidEmail(String(value))
     ) {
       missing[block.props.name] = "Digite um e-mail válido.";
+    }
+
+    if (
+      block.type === "input" &&
+      block.props.inputType === "tel" &&
+      !isValidBrPhone(String(value))
+    ) {
+      missing[block.props.name] = "Digite um telefone válido, com DDD.";
     }
   }
 

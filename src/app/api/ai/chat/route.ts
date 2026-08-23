@@ -11,17 +11,50 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { aplicarChamadaDaIa } from "@/funnel/ai/apply";
-import { buildSystemPrompt } from "@/funnel/ai/prompt";
+import { buildDynamicOutline, buildStaticSystemPrompt } from "@/funnel/ai/prompt";
 import {
   aiToolDescriptions,
   aiToolSchemas,
   CLIENT_SIDE_TOOLS,
   type AiToolName,
 } from "@/funnel/ai/tools";
-import { parseFunnelDocument } from "@/funnel/schema";
+import { parseFunnelDocument, type FunnelDocument } from "@/funnel/schema";
 import { env } from "@/lib/env";
 import { requireOrganization } from "@/server/auth/session";
 import { getFunnelForOrganization } from "@/server/funnels/queries";
+import { checkRateLimit } from "@/server/security/rate-limit";
+
+/**
+ * TTL do cache de prompt (Anthropic, via OpenRouter). "5m" empata o custo
+ * extra de escrita (1.25×) em 2 chamadas — o normal dentro de uma resposta do
+ * copiloto. Só vale subir para "1h" (2×) depois de medir, em produção, que o
+ * intervalo real entre chamadas passa de 5 minutos com frequência.
+ */
+const STATIC_CACHE_TTL: "5m" | "1h" = "5m";
+
+/**
+ * Monta o prompt de sistema como duas mensagens separadas: a estática
+ * (instruções + catálogo de blocos, nunca muda) carrega o `cache_control` da
+ * OpenRouter; a dinâmica (retrato do funil agora) fica de fora do cache de
+ * propósito, porque muda a cada passo. Sem essa separação, cachear não
+ * funciona: o provider não cacheia parte de uma mensagem, e uma mensagem só
+ * que muda a cada passo nunca bate cache nenhum.
+ */
+function buildInstructions(documento: FunnelDocument, opts: { silent?: boolean; thorough?: boolean }) {
+  return [
+    {
+      role: "system" as const,
+      content: buildStaticSystemPrompt(opts),
+      providerOptions: {
+        openrouter: { cacheControl: { type: "ephemeral", ttl: STATIC_CACHE_TTL } },
+      },
+    },
+    {
+      role: "system" as const,
+      content: buildDynamicOutline(documento),
+    },
+  ];
+}
 
 export const runtime = "nodejs";
 /**
@@ -52,6 +85,17 @@ export async function POST(request: Request) {
   }
 
   const { organization } = await requireOrganization();
+
+  // Cada chamada bate num LLM pago — sem teto aqui, um bug no cliente (ou uso
+  // malicioso da conta) vira custo direto de OpenRouter sem limite.
+  const limite = checkRateLimit(`ai-chat:${organization.id}`, { windowSeconds: 60, max: 10 });
+  if (!limite.ok) {
+    return NextResponse.json(
+      { error: "Muitas mensagens em pouco tempo. Aguarde um instante." },
+      { status: 429, headers: { "retry-after": String(limite.retryAfterSeconds) } },
+    );
+  }
+
   const { messages, funnelId, silent, thorough } = (await request.json()) as Corpo;
 
   const funnel = await getFunnelForOrganization(funnelId, organization.id);
@@ -121,7 +165,7 @@ export async function POST(request: Request) {
 
   const result = streamText({
     model: openrouter(env().OPENROUTER_MODEL),
-    system: buildSystemPrompt(documento, { silent, thorough }),
+    instructions: buildInstructions(documento, { silent, thorough }),
     messages: await convertToModelMessages(messages),
     tools: ferramentas,
     // Um funil grande (15-25 telas) passa fácil de 40 chamadas somando
@@ -158,7 +202,7 @@ export async function POST(request: Request) {
      * destravar as ferramentas de construção.
      */
     prepareStep: async ({ steps }) => {
-      const instructions = buildSystemPrompt(documento, { silent, thorough });
+      const instructions = buildInstructions(documento, { silent, thorough });
       if (!thorough) return { instructions };
 
       const planoAceito = steps.some((step) =>
@@ -174,6 +218,15 @@ export async function POST(request: Request) {
         (nome) => nome === "submit_plan" || nome === "ask_user",
       );
       return { instructions, activeTools: ferramentasDoPlano, toolChoice: "required" };
+    },
+    // Instrumentação temporária: mede quantos passos uma resposta real
+    // consome, para recalibrar `stopWhen` com dado de verdade depois que o
+    // lote de blocos (add_step.blocks / add_blocks) entrar no ar — hoje o
+    // teto de 80/150 foi calibrado para o padrão antigo, um bloco por chamada.
+    onFinish: ({ stepNumber }) => {
+      console.info(
+        `[ai-chat] passos=${stepNumber + 1} thorough=${Boolean(thorough)} silent=${Boolean(silent)} funnelId=${funnelId}`,
+      );
     },
   });
 

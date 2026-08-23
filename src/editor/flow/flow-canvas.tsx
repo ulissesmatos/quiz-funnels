@@ -78,13 +78,18 @@ function FlowInterno({ onAbrirTela }: { onAbrirTela: (stepId: string) => void })
     if (fechada === "1") setPainelAberto(null);
   }, []);
 
-  const { personalizar, stepAtivo: stepPersonalizando, erro: erroPersonalizar } = usePersonalizeWithAi();
+  const {
+    personalizar,
+    stepAtivo: stepPersonalizando,
+    erro: erroPersonalizar,
+    iaOcupada,
+  } = usePersonalizeWithAi();
 
   const onFocarIa = useCallback((stepId: string) => personalizar(stepId), [personalizar]);
 
   const grafo = useMemo(
-    () => buildGraph(doc, onAbrirTela, onFocarIa, stepPersonalizando),
-    [doc, onAbrirTela, onFocarIa, stepPersonalizando],
+    () => buildGraph(doc, onAbrirTela, onFocarIa, stepPersonalizando, iaOcupada),
+    [doc, onAbrirTela, onFocarIa, stepPersonalizando, iaOcupada],
   );
   const problemas = useMemo(() => lintFunnel(doc), [doc]);
 

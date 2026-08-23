@@ -11,11 +11,13 @@ import { cartesianBlock, chartBlock, compareBlock, levelBlock } from "./definiti
 import { choiceBlock, inputBlock } from "./definitions/input";
 import { audioBlock, carouselBlock, imageBlock, videoBlock } from "./definitions/media";
 import {
+  checkoutBlock,
   confettiBlock,
   countdownBlock,
   embedBlock,
   guaranteeBlock,
   pricingBlock,
+  upsellBlock,
 } from "./definitions/offer";
 import {
   alertBlock,
@@ -60,6 +62,8 @@ export const leafBlockDefinitions = [
   loaderBlock,
   resultBlock,
   pricingBlock,
+  checkoutBlock,
+  upsellBlock,
   guaranteeBlock,
   countdownBlock,
   confettiBlock,

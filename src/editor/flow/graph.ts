@@ -31,6 +31,13 @@ export type StepNodeData = {
   onFocarIa?: (stepId: string) => void;
   /** A IA está personalizando esta tela agora — mostra o spinner no lugar do ícone. */
   personalizando?: boolean;
+  /**
+   * Algum pedido de "Personalizar com IA" está em andamento em QUALQUER tela
+   * do canvas — desabilita o botão nos demais cards, porque todos dividem o
+   * mesmo `useChat` (ver `usePersonalizeWithAi`) e um segundo pedido enquanto
+   * o primeiro ainda está em voo interferiria na mesma conversa.
+   */
+  iaOcupada?: boolean;
   [key: string]: unknown;
 };
 
@@ -77,6 +84,7 @@ export function buildGraph(
   onAbrir: (stepId: string) => void = () => {},
   onFocarIa?: (stepId: string) => void,
   stepPersonalizando?: string | null,
+  iaOcupada?: boolean,
 ): FlowGraph {
   const problemas = lintFunnel(doc);
   const idsExistentes = new Set(doc.steps.map((s) => s.id));
@@ -94,6 +102,7 @@ export function buildGraph(
       onAbrir,
       onFocarIa,
       personalizando: step.id === stepPersonalizando,
+      iaOcupada: iaOcupada ?? step.id === stepPersonalizando,
     },
   }));
 

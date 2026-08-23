@@ -23,11 +23,37 @@ export const FunnelVariable = z
 
 export const FunnelPixels = z
   .object({
-    metaPixelId: z.string().optional(),
-    googleAdsId: z.string().optional(),
-    googleTagManagerId: z.string().optional(),
+    metaPixelId: z
+      .string()
+      .regex(/^\d{5,20}$/, "Só números — o ID do Pixel da Meta, ex.: 1234567890123456")
+      .optional(),
+    googleAdsId: z
+      .string()
+      .regex(/^(AW|G|GT)-[A-Za-z0-9]+$/, "Formato esperado: AW-XXXXXXXXX ou G-XXXXXXXXXX")
+      .optional(),
+    googleTagManagerId: z
+      .string()
+      .regex(/^GTM-[A-Za-z0-9]+$/, "Formato esperado: GTM-XXXXXXX")
+      .optional(),
+    tiktokPixelId: z
+      .string()
+      .regex(/^[A-Za-z0-9]{10,30}$/, "Só letras e números — o Pixel Code do TikTok, ex.: C56Q1ONB3D4MMMSLO3KG")
+      .optional(),
+    /** "Partner ID" do Insight Tag — obrigatório para o pixel; não é o mesmo id do evento de conversão. */
+    linkedinPartnerId: z
+      .string()
+      .regex(/^\d{4,10}$/, "Só números — o Partner ID do LinkedIn Insight Tag, ex.: 1234567")
+      .optional(),
+    /** "Conversion ID", configurado por evento no Campaign Manager — sem ele o pixel carrega mas nenhuma conversão é registrada. */
+    linkedinConversionId: z
+      .string()
+      .regex(/^\d{4,12}$/, "Só números — o Conversion ID configurado no LinkedIn Campaign Manager")
+      .optional(),
     /** Disparado ao concluir o funil, além do PageView de cada step. */
-    conversionEventName: z.string().optional(),
+    conversionEventName: z
+      .string()
+      .regex(/^[A-Za-z0-9 _.-]{1,64}$/, "Use letras, números, espaço, ponto, hífen ou underline")
+      .optional(),
   })
   .strict();
 
@@ -119,6 +145,7 @@ export type FunnelDocument = Omit<FunnelFromSchema, "steps"> & { steps: Step[] }
 
 export type FunnelVariable = z.infer<typeof FunnelVariable>;
 export type FunnelSettings = z.infer<typeof FunnelSettings>;
+export type FunnelPixels = z.infer<typeof FunnelPixels>;
 
 export type ParseResult =
   | { success: true; data: FunnelDocument; error?: undefined }

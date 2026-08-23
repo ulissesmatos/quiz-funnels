@@ -27,6 +27,16 @@ export function usePersonalizeWithAi() {
   const [stepAtivo, setStepAtivo] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const aplicadas = useRef(new Set<string>());
+  /**
+   * Trava síncrona contra duplo clique.
+   *
+   * `ocupado` (abaixo) só vira `true` depois que `sendMessage` é chamado — e
+   * antes disso há um `await saveFunnelDocumentAction(...)`. Nessa janela,
+   * `ocupado` ainda está `false`, e como todos os cards do canvas dividem este
+   * mesmo `useChat`, clicar em dois cards diferentes nessa janela dispara duas
+   * requisições sobrepostas na mesma conversa. Esta ref fecha a janela.
+   */
+  const emAndamento = useRef(false);
 
   const { messages, sendMessage, status, setMessages } = useChat({
     transport: new DefaultChatTransport({ api: "/api/ai/chat", body: { funnelId, silent: true } }),
@@ -81,17 +91,22 @@ export function usePersonalizeWithAi() {
       setStepAtivo(null);
       setMessages([]);
       aplicadas.current.clear();
+      emAndamento.current = false;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `store`/`setMessages` são estáveis; só `messages`/`status` mudam de verdade
   }, [messages, status]);
 
   const personalizar = useCallback(
     (stepId: string) => {
-      if (ocupado) return;
+      if (emAndamento.current) return;
+      emAndamento.current = true;
 
       const doc = store.getState().doc;
       const step = doc.steps.find((s) => s.id === stepId);
-      if (!step) return;
+      if (!step) {
+        emAndamento.current = false; // sendMessage nunca chegou a rodar
+        return;
+      }
 
       setErro(null);
       setStepAtivo(stepId);
@@ -104,6 +119,7 @@ export function usePersonalizeWithAi() {
         if (!salvo.ok) {
           setErro(salvo.error);
           setStepAtivo(null);
+          emAndamento.current = false; // sendMessage nunca chegou a rodar
           return;
         }
         store.getState().setSaveStatus("salvo");
@@ -113,10 +129,12 @@ export function usePersonalizeWithAi() {
 
 Escolha você mesmo o critério mais relevante entre as perguntas já respondidas antes dela — não pergunte nada, decida e aja direto. Prefira ramificar com \`branch_by_answer\` (criando as telas de destino com \`add_step\` antes) quando o conteúdo muda de verdade depois dessa tela, ou use \`set_step_logic\` / \`set_block_visibility\` quando fizer mais sentido personalizar sem duplicar tela. Ao terminar, garanta que o funil continue navegável.`,
         });
+        // Não libera aqui: o pedido segue em voo. O efeito acima libera
+        // quando `ocupado` volta a `false` de verdade.
       })();
     },
-    [ocupado, store, funnelId, sendMessage],
+    [store, funnelId, sendMessage],
   );
 
-  return { personalizar, stepAtivo, erro };
+  return { personalizar, stepAtivo, erro, iaOcupada: ocupado };
 }

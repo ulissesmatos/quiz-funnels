@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import { AlertCircle, ArrowUp, Brain, Loader2, Sparkles, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
@@ -48,9 +48,23 @@ export function AiPanel({
   const fimDaLista = useRef<HTMLDivElement>(null);
   /** Texto do último auto-envio disparado, pra não duplicar em StrictMode. */
   const autoEnviado = useRef<string | null>(null);
+  /**
+   * Trava síncrona contra duplo envio.
+   *
+   * `ocupado` (abaixo) só vira `true` depois que `sendMessage` é chamado — e
+   * antes disso há um `await saveFunnelDocumentAction(...)`. Nessa janela,
+   * `ocupado` ainda está `false` e um segundo Enter/clique passaria pela
+   * guarda. Esta ref é setada no exato instante do clique, antes de qualquer
+   * `await`, e por isso fecha a janela que `ocupado` sozinho não cobre.
+   */
+  const enviando = useRef(false);
 
   const { messages, sendMessage, status, error, stop, addToolResult } = useChat({
     transport: new DefaultChatTransport({ api: "/api/ai/chat", body: { funnelId } }),
+    // Sem isto, responder o popup do `ask_user` via `addToolResult` nunca
+    // reenvia pro servidor — o resultado fica só no estado local do cliente e
+    // o stream permanece parado esperando uma mensagem que nunca chega.
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
   });
 
   const ocupado = status === "submitted" || status === "streaming";
@@ -116,9 +130,11 @@ export function AiPanel({
   }, [messages]);
 
   async function enviar(textoForcado?: string) {
+    if (enviando.current) return;
     const conteudo = (textoForcado ?? texto).trim();
     if (!conteudo || ocupado) return;
 
+    enviando.current = true;
     setErroLocal(null);
     setTexto("");
 
@@ -127,12 +143,21 @@ export function AiPanel({
     const salvo = await saveFunnelDocumentAction(funnelId, store.getState().doc);
     if (!salvo.ok) {
       setErroLocal(salvo.error);
+      enviando.current = false; // sendMessage nunca chegou a rodar
       return;
     }
     store.getState().setSaveStatus("salvo");
 
     sendMessage({ text: conteudo }, { body: { thorough: capricho } });
+    // Não libera aqui: o pedido segue em voo. O efeito abaixo libera quando
+    // `ocupado` volta a `false` de verdade.
   }
+
+  // Libera a trava de envio quando o chat volta a ficar ocioso — cobre tanto
+  // o fim normal da resposta quanto erro/parada no meio do stream.
+  useEffect(() => {
+    if (!ocupado) enviando.current = false;
+  }, [ocupado]);
 
   // Pedido feito no modal de criação do funil: preenche e já dispara sozinho,
   // sem esperar clique — chega aqui via `sessionStorage` (ver `ai-kickoff.ts`).
@@ -429,6 +454,7 @@ const RÓTULOS_DE_FERRAMENTA: Record<string, string> = {
   update_step: "Ajustando tela",
   remove_step: "Removendo tela",
   add_block: "Adicionando bloco",
+  add_blocks: "Adicionando blocos",
   update_block: "Editando bloco",
   remove_block: "Removendo bloco",
   move_block: "Movendo bloco",

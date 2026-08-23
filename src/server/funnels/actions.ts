@@ -8,11 +8,14 @@ import { lintFunnel } from "@/funnel/logic/lint";
 import { createEmptyFunnel, describeParseError, parseFunnelDocument } from "@/funnel/schema";
 import { slugify } from "@/lib/slug";
 import { requireOrganization } from "@/server/auth/session";
+import { getOrganizationSubscription, isEditingBlocked } from "@/server/billing/queries";
 import { db } from "@/server/db";
 import { funnels, funnelVersions } from "@/server/db/schema";
+import type { ActionResult } from "@/server/shared/action-result";
 import { getOrganizationSettings } from "@/server/settings/queries";
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
+const MENSAGEM_ASSINATURA_PENDENTE =
+  "Assinatura pendente — regularize o pagamento em Configurações para voltar a editar. O que já está publicado continua no ar normalmente.";
 
 export async function createFunnelAction(formData: FormData) {
   const { session, organization } = await requireOrganization();
@@ -45,6 +48,9 @@ export async function saveFunnelDocumentAction(
 ): Promise<ActionResult> {
   const { organization } = await requireOrganization();
 
+  const subscription = await getOrganizationSubscription(organization.id);
+  if (isEditingBlocked(subscription)) return { ok: false, error: MENSAGEM_ASSINATURA_PENDENTE };
+
   const parsed = parseFunnelDocument(rawDocument);
   if (!parsed.success) {
     return { ok: false, error: `Documento inválido — ${describeParseError(parsed.error)}` };
@@ -72,6 +78,9 @@ export async function saveFunnelDocumentAction(
  */
 export async function publishFunnelAction(funnelId: string): Promise<ActionResult> {
   const { session, organization } = await requireOrganization();
+
+  const subscription = await getOrganizationSubscription(organization.id);
+  if (isEditingBlocked(subscription)) return { ok: false, error: MENSAGEM_ASSINATURA_PENDENTE };
 
   const [funnel] = await db
     .select({ id: funnels.id, document: funnels.document, slug: funnels.slug })

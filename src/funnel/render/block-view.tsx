@@ -17,6 +17,7 @@ import {
 import { CartesianBlock, ChartBlock, CompareBlock, LevelBlock } from "./blocks/data";
 import { ChoiceBlock, InputBlock } from "./blocks/input";
 import { AudioBlock, CarouselBlock, ImageBlock, VideoBlock } from "./blocks/media";
+import { CheckoutBlock } from "./blocks/checkout";
 import { ConfettiBlock, CountdownBlock, EmbedBlock, GuaranteeBlock, PricingBlock } from "./blocks/offer";
 import {
   AlertBlock,
@@ -26,6 +27,7 @@ import {
   TermsBlock,
   TestimonialsBlock,
 } from "./blocks/proof";
+import { UpsellBlock } from "./blocks/upsell";
 import { useFunnelRuntime } from "./runtime-context";
 import { blockAnimationVars, blockStyleVars, splitResponsive } from "./style";
 
@@ -115,6 +117,10 @@ function BlockContent({ block, theme }: { block: Block; theme: Theme }) {
 
     case "pricing":
       return <PricingBlock props={block.props} theme={theme} />;
+    case "checkout":
+      return <CheckoutBlock props={block.props} blockId={block.id} />;
+    case "upsell":
+      return <UpsellBlock props={block.props} blockId={block.id} />;
     case "guarantee":
       return <GuaranteeBlock props={block.props} />;
     case "countdown":
