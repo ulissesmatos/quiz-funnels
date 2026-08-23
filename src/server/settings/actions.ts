@@ -6,8 +6,7 @@ import type { ThemeMode } from "@/funnel/schema/theme";
 import { requireOrganization } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { organizationSettings } from "@/server/db/schema";
-
-export type ActionResult = { ok: true } | { ok: false; error: string };
+import type { ActionResult } from "@/server/shared/action-result";
 
 /**
  * Modo de cor (claro/escuro/automático) do painel e do editor desta

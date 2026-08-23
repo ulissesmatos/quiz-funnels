@@ -6,6 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { organization } from "better-auth/plugins";
 
 import { env } from "@/lib/env";
+import { startTrialSubscription } from "@/server/billing/subscriptions";
 import { db, schema } from "@/server/db";
 
 import { createPersonalOrganization } from "./organization";
@@ -14,6 +15,16 @@ export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg", schema }),
   secret: env().BETTER_AUTH_SECRET,
   baseURL: env().BETTER_AUTH_URL,
+
+  user: {
+    additionalFields: {
+      /**
+       * `input: false` — nunca aceito de `updateUser`/cadastro, só existe pra
+       * ser LIDO da sessão. Promover alguém é um UPDATE direto no banco.
+       */
+      isSuperAdmin: { type: "boolean", defaultValue: false, input: false },
+    },
+  },
 
   /**
    * Em produção só a URL configurada é aceita. Em desenvolvimento aceitamos a
@@ -61,6 +72,13 @@ export const auth = betterAuth({
       organizationLimit: 10,
       membershipLimit: 50,
       creatorRole: "owner",
+      organizationHooks: {
+        // Cobre organizações criadas pela API do plugin (`authClient.organization.create`).
+        // A pessoal do cadastro é criada por fora disso — ver `createPersonalOrganization`.
+        afterCreateOrganization: async ({ organization: createdOrganization }) => {
+          await startTrialSubscription(createdOrganization.id);
+        },
+      },
     }),
     // Precisa ser o último: é o que grava os cookies nas server actions.
     nextCookies(),

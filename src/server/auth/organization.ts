@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 import { slugify } from "@/lib/slug";
+import { startTrialSubscription } from "@/server/billing/subscriptions";
 import { db } from "@/server/db";
 import { member, organization } from "@/server/db/schema";
 
@@ -36,6 +37,8 @@ export async function createPersonalOrganization(user: {
     role: "owner",
     createdAt: now,
   });
+
+  await startTrialSubscription(organizationId);
 
   return organizationId;
 }
