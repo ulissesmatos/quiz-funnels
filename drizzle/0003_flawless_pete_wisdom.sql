@@ -1,0 +1,1 @@
+ALTER TABLE "funnel_domains" ADD COLUMN "verification_token" text NOT NULL;

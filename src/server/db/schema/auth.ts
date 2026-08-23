@@ -13,6 +13,13 @@ export const user = pgTable("user", {
     .$defaultFn(() => false)
     .notNull(),
   image: text("image"),
+  /**
+   * Operador do SaaS — não é papel de organização (`member.role`), é acesso
+   * cross-org ao painel `/admin`. Exposto ao Better Auth como additional field
+   * com `input: false` (ver `server/auth/index.ts`): nunca é setável pelo
+   * próprio usuário via API de auth, só por UPDATE direto no banco.
+   */
+  isSuperAdmin: boolean("is_super_admin").default(false).notNull(),
   createdAt: timestamp("created_at")
     .$defaultFn(() => new Date())
     .notNull(),

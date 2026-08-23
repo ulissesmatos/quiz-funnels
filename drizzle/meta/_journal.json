@@ -15,6 +15,48 @@
       "when": 1786818836974,
       "tag": "0001_sharp_the_renegades",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786907902899,
+      "tag": "0002_aberrant_newton_destine",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786908285711,
+      "tag": "0003_flawless_pete_wisdom",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786909214636,
+      "tag": "0004_fixed_spacker_dave",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786929033815,
+      "tag": "0005_dazzling_virginia_dare",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786963761267,
+      "tag": "0006_jazzy_ben_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786967039489,
+      "tag": "0007_brave_ghost_rider",
+      "breakpoints": true
     }
   ]
 }
