@@ -2,9 +2,32 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
-import { AlertCircle, ArrowUp, Brain, Loader2, Sparkles, Square } from "lucide-react";
+import {
+  ArrowUp,
+  ArrowUpDown,
+  Blocks,
+  Brain,
+  CheckCheck,
+  ChevronRight,
+  ClipboardList,
+  FilePlus2,
+  GitBranch,
+  MessageCircleQuestionMark,
+  Palette,
+  PencilLine,
+  RotateCcw,
+  Sparkles,
+  Split,
+  Square,
+  Trash2,
+  Variable,
+  Wrench,
+} from "lucide-react";
+import type { ComponentType } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { Alert } from "@/components/ui/alert";
+import { ShimmerText } from "@/components/ui/shimmer-text";
 import { aplicarChamadaDaIa } from "@/funnel/ai/apply";
 import type { AiToolName } from "@/funnel/ai/tools";
 import { cn } from "@/lib/cn";
@@ -59,7 +82,7 @@ export function AiPanel({
    */
   const enviando = useRef(false);
 
-  const { messages, sendMessage, status, error, stop, addToolResult } = useChat({
+  const { messages, sendMessage, status, error, stop, addToolResult, regenerate, clearError } = useChat({
     transport: new DefaultChatTransport({ api: "/api/ai/chat", body: { funnelId } }),
     // Sem isto, responder o popup do `ask_user` via `addToolResult` nunca
     // reenvia pro servidor — o resultado fica só no estado local do cliente e
@@ -71,6 +94,15 @@ export function AiPanel({
 
   // Pergunta da IA ainda sem resposta: o stream está parado esperando.
   const perguntaPendente = encontrarPerguntaPendente(messages);
+
+  /**
+   * Janela entre o envio e o primeiro pedaço de resposta — no modo cuidadoso
+   * chega a dezenas de segundos, porque o modelo planeja antes de escrever.
+   * Sem um sinal aqui a tela fica parada e parece travada.
+   */
+  const ultima = messages[messages.length - 1];
+  const aguardandoResposta =
+    ocupado && (!ultima || ultima.role !== "assistant" || !temConteudoVisivel(ultima));
 
   // Aplica no documento cada chamada de ferramenta que chegou completa.
   useEffect(() => {
@@ -136,6 +168,7 @@ export function AiPanel({
 
     enviando.current = true;
     setErroLocal(null);
+    clearError();
     setTexto("");
 
     // O servidor monta o contexto lendo o rascunho do banco. Salvar antes evita
@@ -174,49 +207,79 @@ export function AiPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-2 border-b border-app-border px-3 py-2.5">
-        <Sparkles size={15} className="text-app-primary" />
+        <span className="grid h-6 w-6 place-items-center rounded-md bg-app-primary/15 text-app-primary">
+          <Sparkles size={13} />
+        </span>
         <h2 className="text-sm font-medium">Copiloto</h2>
-        {ocupado && <Loader2 size={13} className="ml-auto animate-spin text-app-muted" />}
+        {capricho && (
+          <span className="ml-auto flex items-center gap-1 rounded-full bg-app-primary/15 px-2 py-0.5 text-[10px] font-medium text-app-primary">
+            <Brain size={10} />
+            Capricho
+          </span>
+        )}
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
         {messages.length === 0 ? (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm text-app-muted">
+          <div className="flex flex-col gap-3">
+            <p className="text-sm leading-relaxed text-app-muted">
               Descreva o funil que você quer. As mudanças aparecem no canvas enquanto ele monta.
             </p>
-            {SUGESTOES.map((sugestao) => (
-              <button
-                key={sugestao}
-                type="button"
-                onClick={() => setTexto(sugestao)}
-                className="rounded-lg border border-app-border px-3 py-2 text-left text-xs leading-snug text-app-muted transition-colors hover:border-app-primary/60 hover:text-app-text"
-              >
-                {sugestao}
-              </button>
-            ))}
+            <div className="flex flex-col gap-1.5">
+              {SUGESTOES.map((sugestao) => (
+                <button
+                  key={sugestao}
+                  type="button"
+                  // Envia direto: antes só preenchia o campo, e era preciso um
+                  // segundo clique no botão de enviar pra nada acontecer no meio.
+                  onClick={() => void enviar(sugestao)}
+                  className="group flex items-start gap-2 rounded-lg border border-app-border px-3 py-2.5 text-left text-xs leading-snug text-app-muted transition-colors hover:border-app-primary/60 hover:bg-app-surface-2 hover:text-app-text"
+                >
+                  <Sparkles size={12} className="mt-0.5 shrink-0 text-app-primary/70" />
+                  <span className="flex-1">{sugestao}</span>
+                  <ChevronRight
+                    size={13}
+                    className="mt-0.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                  />
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             {messages.map((message) => (
               <Mensagem key={message.id} message={message} />
             ))}
           </div>
         )}
 
+        {aguardandoResposta && (
+          <div className="mt-3 flex items-center gap-2 text-sm">
+            <Sparkles size={13} className="shrink-0 animate-pulse text-app-primary" />
+            <ShimmerText>{capricho ? "Planejando com calma…" : "Pensando…"}</ShimmerText>
+          </div>
+        )}
+
         {(error || erroLocal) && (
-          <p
-            role="alert"
-            className="mt-3 flex items-start gap-1.5 rounded-lg bg-app-danger/10 px-2.5 py-2 text-xs text-app-danger"
-          >
-            <AlertCircle size={13} className="mt-px shrink-0" />
-            {erroLocal ?? error?.message}
-          </p>
+          <Alert tone="danger" className="mt-3 text-xs">
+            <p>{erroLocal ?? error?.message}</p>
+            {error && !erroLocal && (
+              <button
+                type="button"
+                onClick={() => void regenerate()}
+                className="mt-1.5 flex items-center gap-1 font-medium underline underline-offset-2"
+              >
+                <RotateCcw size={11} />
+                Tentar de novo
+              </button>
+            )}
+          </Alert>
         )}
 
         <div ref={fimDaLista} />
       </div>
 
+      {/* `relative` ancora o popup de pergunta, que abre por cima do campo. */}
       <div className="relative shrink-0 border-t border-app-border p-2.5">
         <div className="mb-1.5 flex items-center px-0.5">
           <button
@@ -249,7 +312,7 @@ export function AiPanel({
           />
         )}
 
-        <div className="flex items-end gap-1.5 rounded-xl border border-app-border bg-app-surface-2 p-1.5">
+        <div className="flex items-end gap-1.5 rounded-xl border border-app-border bg-app-surface-2 p-1.5 transition-colors focus-within:border-app-primary/60">
           <textarea
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
@@ -287,6 +350,17 @@ type PerguntaDaIa = {
   toolCallId: string;
   input: { question: string; options: string[]; allowFreeText?: boolean };
 };
+
+/** Uma mensagem já tem algo pra mostrar? Usado só pra decidir o "Pensando…". */
+function temConteudoVisivel(message: { parts?: { type: string }[] }): boolean {
+  return Boolean(
+    message.parts?.some((part) => {
+      if (part.type === "text") return Boolean((part as unknown as { text?: string }).text?.trim());
+      if (part.type === "reasoning") return Boolean((part as unknown as { text?: string }).text?.trim());
+      return part.type.startsWith("tool-");
+    }),
+  );
+}
 
 /**
  * Pergunta feita pela IA e ainda sem resposta.
@@ -336,9 +410,12 @@ function PopupDePergunta({
   const permiteTexto = pergunta.allowFreeText !== false;
 
   return (
-    <div className="absolute right-2.5 bottom-full left-2.5 z-10 mb-2 rounded-xl border border-app-primary/60 bg-app-surface p-3 shadow-[0_12px_40px_rgba(0,0,0,0.45)]">
-      <div className="mb-2.5 text-sm leading-snug">
-        <ChatMarkdown text={pergunta.question} />
+    <div className="absolute right-2.5 bottom-full left-2.5 z-10 mb-2 rounded-xl border border-app-primary/60 bg-app-surface p-3 shadow-app-lg">
+      <div className="mb-2.5 flex items-start gap-2">
+        <MessageCircleQuestionMark size={14} className="mt-0.5 shrink-0 text-app-primary" />
+        <div className="text-sm leading-snug">
+          <ChatMarkdown text={pergunta.question} />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -347,7 +424,7 @@ function PopupDePergunta({
             key={opcao}
             type="button"
             onClick={() => onResponder(opcao)}
-            className="rounded-full border border-app-border bg-app-surface-2 px-3 py-1.5 text-xs transition-colors hover:border-app-primary hover:text-app-text"
+            className="rounded-full border border-app-border bg-app-surface-2 px-3 py-1.5 text-xs transition-colors hover:border-app-primary hover:bg-app-primary/10 hover:text-app-text"
           >
             {opcao}
           </button>
@@ -396,13 +473,22 @@ function Mensagem({ message }: { message: { role: string; parts: { type: string 
       .join("");
 
     return (
-      <p className="ml-6 rounded-xl rounded-br-sm bg-app-primary/15 px-3 py-2 text-sm">{texto}</p>
+      <p className="ml-6 self-end rounded-xl rounded-br-sm bg-app-primary/15 px-3 py-2 text-sm whitespace-pre-wrap">
+        {texto}
+      </p>
     );
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       {message.parts.map((part, index) => {
+        if (part.type === "reasoning") {
+          const texto = (part as unknown as { text: string }).text;
+          if (!texto?.trim()) return null;
+          const streaming = (part as unknown as { state?: string }).state === "streaming";
+          return <Raciocinio key={index} texto={texto} streaming={streaming} />;
+        }
+
         if (part.type === "text") {
           const texto = (part as unknown as { text: string }).text;
           if (!texto.trim()) return null;
@@ -415,6 +501,7 @@ function Mensagem({ message }: { message: { role: string; parts: { type: string 
             output?: { ok?: boolean; resumo?: string; erro?: string };
           };
 
+          const ferramenta = part.type.slice("tool-".length);
           const falhou = chamada.output?.ok === false;
 
           // O erro técnico (validação de schema, id que não existe) volta
@@ -422,30 +509,67 @@ function Mensagem({ message }: { message: { role: string; parts: { type: string 
           // lendo o chat. Aqui mostramos só que algo foi ajustado.
           const rotulo =
             chamada.output?.resumo ??
-            (falhou ? "Ajustando um detalhe" : RÓTULOS_DE_FERRAMENTA[part.type.slice("tool-".length)] ?? "Editando");
+            (falhou ? "Ajustando um detalhe" : RÓTULOS_DE_FERRAMENTA[ferramenta] ?? "Editando");
           const rodando = chamada.state === "input-streaming" || chamada.state === "input-available";
+          const Icone = ÍCONES_DE_FERRAMENTA[ferramenta] ?? Wrench;
 
           return (
-            <p
+            <div
               key={index}
               className={cn(
-                "flex items-center gap-1.5 text-xs",
-                falhou ? "text-app-danger" : "text-app-muted",
+                "flex items-start gap-2 rounded-lg border border-app-border/60 bg-app-surface-2/40 px-2 py-1.5 text-xs",
+                falhou && "border-app-danger/40 text-app-danger",
               )}
             >
+              <span
+                className={cn(
+                  "mt-px grid h-4 w-4 shrink-0 place-items-center rounded",
+                  falhou
+                    ? "text-app-danger"
+                    : rodando
+                      ? "text-app-primary"
+                      : "text-app-success",
+                )}
+              >
+                <Icone size={11} />
+              </span>
               {rodando ? (
-                <Loader2 size={11} className="animate-spin" />
+                <ShimmerText className="flex-1">{rotulo}</ShimmerText>
               ) : (
-                <span className={cn("h-1.5 w-1.5 rounded-full", falhou ? "bg-app-danger" : "bg-app-success")} />
+                <span className={cn("flex-1", !falhou && "text-app-muted")}>{rotulo}</span>
               )}
-              {rotulo}
-            </p>
+            </div>
           );
         }
 
         return null;
       })}
     </div>
+  );
+}
+
+/**
+ * Trilha de raciocínio do modo cuidadoso.
+ *
+ * O `reasoning` já chegava do provider (a rota manda `effort: "high"`) e era
+ * descartado no render — este painel simplesmente ignorava qualquer part que
+ * não fosse texto ou ferramenta. Recolhido por padrão: é contexto pra quem
+ * quiser auditar, não a resposta.
+ */
+function Raciocinio({ texto, streaming }: { texto: string; streaming: boolean }) {
+  return (
+    <details className="group rounded-lg border border-app-border/60 bg-app-surface-2/30">
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 px-2 py-1.5 text-xs text-app-muted marker:content-none hover:text-app-text">
+        <ChevronRight size={11} className="shrink-0 transition-transform group-open:rotate-90" />
+        <Brain size={11} className="shrink-0" />
+        {streaming ? <ShimmerText>Raciocinando…</ShimmerText> : <span>Raciocínio</span>}
+      </summary>
+      {/* Markdown, não texto cru: o raciocínio vem com `**negrito**` e listas,
+          que apareceriam com os asteriscos à mostra. */}
+      <div className="border-t border-app-border/60 px-2.5 py-2 text-xs leading-relaxed text-app-muted">
+        <ChatMarkdown text={texto} />
+      </div>
+    </details>
   );
 }
 
@@ -465,4 +589,22 @@ const RÓTULOS_DE_FERRAMENTA: Record<string, string> = {
   set_theme: "Ajustando o tema",
   submit_plan: "Planejando o funil",
   set_variables: "Definindo variáveis",
+};
+
+const ÍCONES_DE_FERRAMENTA: Record<string, ComponentType<{ size?: number; className?: string }>> = {
+  add_step: FilePlus2,
+  update_step: PencilLine,
+  remove_step: Trash2,
+  add_block: Blocks,
+  add_blocks: Blocks,
+  update_block: PencilLine,
+  remove_block: Trash2,
+  move_block: ArrowUpDown,
+  set_step_logic: GitBranch,
+  branch_by_answer: Split,
+  check_funnel: CheckCheck,
+  ask_user: MessageCircleQuestionMark,
+  set_theme: Palette,
+  submit_plan: ClipboardList,
+  set_variables: Variable,
 };
