@@ -17,6 +17,7 @@ import { Logo } from "@/components/brand/logo";
 import { PLAN } from "@/server/billing/plan";
 
 import { MarketingImage } from "./marketing-image";
+import { SiteHeader } from "./site-header";
 
 const RECURSOS = [
   {
@@ -104,10 +105,10 @@ const FAQ = [
   },
 ];
 
-export function LandingPage() {
+export function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
   return (
-    <div className="overflow-hidden bg-white text-marketing-ink">
-      <SiteHeader />
+    <div className="bg-white text-marketing-ink">
+      <SiteHeader isLoggedIn={isLoggedIn} />
       <main>
         <Hero />
         <Recursos />
@@ -120,46 +121,6 @@ export function LandingPage() {
       </main>
       <SiteFooter />
     </div>
-  );
-}
-
-function SiteHeader() {
-  return (
-    <header className="sticky top-0 z-20 border-b border-marketing-border bg-white/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-8">
-        <Link href="/" className="flex items-center gap-2">
-          <Logo className="h-8 w-8 shrink-0" />
-          <span className="font-semibold tracking-tight">FunilQuiz</span>
-        </Link>
-
-        <nav className="hidden items-center gap-6 text-sm text-marketing-muted md:flex">
-          <a href="#recursos" className="transition-colors hover:text-marketing-ink">
-            Recursos
-          </a>
-          <a href="#como-funciona" className="transition-colors hover:text-marketing-ink">
-            Como funciona
-          </a>
-          <a href="#preco" className="transition-colors hover:text-marketing-ink">
-            Preço
-          </a>
-        </nav>
-
-        <div className="flex items-center gap-2">
-          <Link
-            href="/entrar"
-            className="hidden rounded-lg px-3 py-2 text-sm text-marketing-muted transition-colors hover:text-marketing-ink sm:inline-block"
-          >
-            Entrar
-          </Link>
-          <Link
-            href="/cadastro"
-            className="rounded-lg bg-marketing-blue px-3.5 py-2 text-sm font-medium text-white shadow-lg shadow-marketing-blue/20 transition-transform hover:-translate-y-0.5 hover:bg-[#2455d6]"
-          >
-            Criar funil grátis
-          </Link>
-        </div>
-      </div>
-    </header>
   );
 }
 
