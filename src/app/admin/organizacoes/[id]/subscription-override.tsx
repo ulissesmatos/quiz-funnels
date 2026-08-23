@@ -1,9 +1,9 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input, Select } from "@/components/ui/field";
 import { extendTrialAction, setSubscriptionStatusAction } from "@/server/admin/actions";
 
 const STATUS_OPTIONS = [
@@ -38,34 +38,36 @@ export function SubscriptionOverride({ organizationId }: { organizationId: strin
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        <select
+        <Select
           value={status}
+          aria-label="Novo status da assinatura"
           onChange={(e) => setStatus(e.target.value as (typeof STATUS_OPTIONS)[number]["value"])}
-          className="h-9 rounded-lg border border-app-border bg-app-surface px-3 text-sm text-app-text focus:border-app-primary focus:outline-none"
+          className="h-9 w-44"
         >
           {STATUS_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
-        </select>
-        <Button size="sm" variant="outline" onClick={aplicarStatus} disabled={pending}>
-          {pending ? <Loader2 size={14} className="animate-spin" /> : "Aplicar status"}
+        </Select>
+        <Button size="sm" variant="outline" onClick={aplicarStatus} loading={pending}>
+          Aplicar status
         </Button>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <input
+        <Input
           type="number"
           min={1}
           max={90}
           value={dias}
+          aria-label="Dias de trial a estender"
           onChange={(e) => setDias(Number(e.target.value))}
-          className="h-9 w-20 rounded-lg border border-app-border bg-app-surface px-3 text-sm text-app-text focus:border-app-primary focus:outline-none"
+          className="h-9 w-20"
         />
         <span className="text-sm text-app-muted">dias de trial</span>
-        <Button size="sm" variant="outline" onClick={estenderTrial} disabled={pending}>
-          {pending ? <Loader2 size={14} className="animate-spin" /> : "Estender trial"}
+        <Button size="sm" variant="outline" onClick={estenderTrial} loading={pending}>
+          Estender trial
         </Button>
       </div>
 

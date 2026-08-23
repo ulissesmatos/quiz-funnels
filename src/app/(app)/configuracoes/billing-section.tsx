@@ -1,17 +1,18 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/cn";
+import { Card, CardHeader } from "@/components/ui/card";
+import { formatarDataCompleta } from "@/lib/format";
 import { startSubscriptionCheckoutAction } from "@/server/billing/actions";
 
-const RÓTULO_STATUS: Record<string, { texto: string; tom: "neutro" | "sucesso" | "alerta" | "erro" }> = {
-  trialing: { texto: "Em teste", tom: "neutro" },
-  active: { texto: "Ativa", tom: "sucesso" },
-  past_due: { texto: "Pagamento pendente", tom: "erro" },
-  canceled: { texto: "Cancelada", tom: "erro" },
+const RÓTULO_STATUS: Record<string, { texto: string; tone: BadgeProps["tone"] }> = {
+  trialing: { texto: "Em teste", tone: "neutral" },
+  active: { texto: "Ativa", tone: "success" },
+  past_due: { texto: "Pagamento pendente", tone: "warning" },
+  canceled: { texto: "Cancelada", tone: "danger" },
 };
 
 export function BillingSection({
@@ -44,56 +45,36 @@ export function BillingSection({
   }
 
   return (
-    <section className="mb-6 rounded-2xl border border-app-border bg-app-surface p-5">
-      <h2 className="font-medium">Assinatura</h2>
-      <p className="mt-1 text-sm text-app-muted">
-        Plano único, {priceLabel}/mês. Em atraso, a edição dos seus funis fica bloqueada — o que já está publicado
-        continua no ar normalmente.
-      </p>
+    <Card>
+      <CardHeader
+        title="Assinatura"
+        description={`Plano único, ${priceLabel}/mês. Em atraso, a edição dos seus funis fica bloqueada — o que já está publicado continua no ar normalmente.`}
+      />
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         {rótulo && (
-          <span
-            className={cn(
-              "rounded-full px-2.5 py-1 text-xs",
-              rótulo.tom === "sucesso" && "bg-app-success/15 text-app-success",
-              rótulo.tom === "erro" && "bg-app-danger/15 text-app-danger",
-              rótulo.tom === "neutro" && "bg-app-surface-2 text-app-muted",
-            )}
-          >
+          <Badge tone={rótulo.tone} size="md">
             {rótulo.texto}
-          </span>
+          </Badge>
         )}
 
         {status === "trialing" && trialEndsAt && (
-          <span className="text-sm text-app-muted">
-            expira em {formatarData(trialEndsAt)}
-          </span>
+          <span className="text-sm text-app-muted">expira em {formatarDataCompleta(trialEndsAt)}</span>
         )}
         {status === "active" && currentPeriodEnd && (
-          <span className="text-sm text-app-muted">próxima cobrança em {formatarData(currentPeriodEnd)}</span>
+          <span className="text-sm text-app-muted">
+            próxima cobrança em {formatarDataCompleta(currentPeriodEnd)}
+          </span>
         )}
       </div>
 
       {erro && <p className="mt-3 text-xs text-app-danger">{erro}</p>}
 
       <div className="mt-4">
-        <Button size="sm" onClick={assinar} disabled={pending}>
-          {pending ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : bloqueado ? (
-            "Atualizar pagamento"
-          ) : status === "active" ? (
-            "Trocar cartão"
-          ) : (
-            "Assinar agora"
-          )}
+        <Button size="sm" onClick={assinar} loading={pending}>
+          {bloqueado ? "Atualizar pagamento" : status === "active" ? "Trocar cartão" : "Assinar agora"}
         </Button>
       </div>
-    </section>
+    </Card>
   );
-}
-
-function formatarData(data: Date): string {
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(data);
 }

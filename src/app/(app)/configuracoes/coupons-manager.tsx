@@ -1,13 +1,16 @@
 "use client";
 
-import { Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState, useTransition } from "react";
 
+import { badgeStyles } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { Card } from "@/components/ui/card";
+import { Field, Input, Select } from "@/components/ui/field";
+import { ListRow, ListRowActions, ListRowMain } from "@/components/ui/list-row";
+import { CodeChip } from "@/components/ui/misc";
 import { createCouponAction, deleteCouponAction, toggleCouponAction } from "@/server/coupons/actions";
 import type { CouponListItem } from "@/server/coupons/queries";
-import { cn } from "@/lib/cn";
 
 export function CouponsManager({
   coupons: couponsIniciais,
@@ -97,63 +100,61 @@ function NovoCupomForm({
   }
 
   return (
-    <form onSubmit={enviar} className="rounded-2xl border border-app-border bg-app-surface p-4">
-      <h3 className="text-sm font-medium">Novo cupom</h3>
+    <Card padding="sm" className="bg-app-surface-2/40">
+      <form onSubmit={enviar}>
+        <h3 className="text-sm font-medium">Novo cupom</h3>
 
-      <div className="mt-3 flex flex-wrap items-end gap-3">
-        <Field label="Código">
-          <Input
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder="BEMVINDO10"
-            className="w-40"
-          />
-        </Field>
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <Field label="Código">
+            <Input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="BEMVINDO10"
+              className="w-40"
+            />
+          </Field>
 
-        <Field label="Tipo">
-          <select
-            value={type}
-            onChange={(e) => setType(e.target.value as "percent" | "fixed")}
-            className="h-10 rounded-lg border border-app-border bg-app-surface px-3 text-sm text-app-text focus:border-app-primary focus:outline-none"
-          >
-            <option value="percent">% desconto</option>
-            <option value="fixed">R$ desconto</option>
-          </select>
-        </Field>
+          <Field label="Tipo">
+            <Select
+              value={type}
+              onChange={(e) => setType(e.target.value as "percent" | "fixed")}
+              className="w-36"
+            >
+              <option value="percent">% desconto</option>
+              <option value="fixed">R$ desconto</option>
+            </Select>
+          </Field>
 
-        <Field label={type === "percent" ? "Percentual" : "Valor (R$)"}>
-          <Input
-            type="number"
-            min={1}
-            max={type === "percent" ? 100 : undefined}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="w-24"
-          />
-        </Field>
+          <Field label={type === "percent" ? "Percentual" : "Valor (R$)"}>
+            <Input
+              type="number"
+              min={1}
+              max={type === "percent" ? 100 : undefined}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className="w-24"
+            />
+          </Field>
 
-        <Field label="Funil">
-          <select
-            value={funnelId}
-            onChange={(e) => setFunnelId(e.target.value)}
-            className="h-10 rounded-lg border border-app-border bg-app-surface px-3 text-sm text-app-text focus:border-app-primary focus:outline-none"
-          >
-            <option value="">Todos os funis</option>
-            {funnels.map((funnel) => (
-              <option key={funnel.id} value={funnel.id}>
-                {funnel.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+          <Field label="Funil">
+            <Select value={funnelId} onChange={(e) => setFunnelId(e.target.value)} className="w-48">
+              <option value="">Todos os funis</option>
+              {funnels.map((funnel) => (
+                <option key={funnel.id} value={funnel.id}>
+                  {funnel.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
-        <Button type="submit" size="sm" disabled={pending || !code.trim()}>
-          {pending ? <Loader2 size={14} className="animate-spin" /> : "Criar"}
-        </Button>
-      </div>
+          <Button type="submit" size="sm" loading={pending} disabled={!code.trim()}>
+            Criar
+          </Button>
+        </div>
 
-      {erro && <p className="mt-2 text-xs text-app-danger">{erro}</p>}
-    </form>
+        {erro && <p className="mt-2 text-xs text-app-danger">{erro}</p>}
+      </form>
+    </Card>
   );
 }
 
@@ -184,46 +185,43 @@ function CupomRow({
   }
 
   return (
-    <li
-      className={cn(
-        "flex items-center justify-between gap-3 rounded-lg border border-app-border bg-app-surface px-3 py-2.5",
-        pending && "opacity-60",
-      )}
-    >
-      <div className="min-w-0">
-        <p className="truncate text-sm text-app-text">
-          <code className="rounded bg-app-surface-2 px-1 py-0.5">{coupon.code}</code>{" "}
-          {coupon.type === "percent" ? `${coupon.value}% off` : `R$ ${(coupon.value / 100).toFixed(2)} off`}
-        </p>
-        <p className="text-xs text-app-muted">
-          {coupon.funnelName ?? "Todos os funis"} · usado {coupon.usedCount}
-          {coupon.maxUses ? `/${coupon.maxUses}` : ""} {coupon.maxUses ? "vezes" : "vez(es)"}
-        </p>
-      </div>
+    <ListRow pending={pending}>
+      <ListRowMain
+        title={
+          <>
+            <CodeChip>{coupon.code}</CodeChip>{" "}
+            {coupon.type === "percent" ? `${coupon.value}% off` : `R$ ${(coupon.value / 100).toFixed(2)} off`}
+          </>
+        }
+      >
+        {coupon.funnelName ?? "Todos os funis"} · usado {coupon.usedCount}
+        {coupon.maxUses ? `/${coupon.maxUses}` : ""} {coupon.maxUses ? "vezes" : "vez(es)"}
+      </ListRowMain>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <ListRowActions>
+        {/* Pill que também é o interruptor — por isso é `<button>` com o
+            estilo do Badge, e não um Badge com onClick. */}
         <button
           type="button"
           disabled={pending}
           onClick={alternar}
-          className={cn(
-            "rounded-full px-2.5 py-1 text-xs",
-            coupon.active ? "bg-app-success/15 text-app-success" : "bg-app-surface-2 text-app-muted",
-          )}
+          aria-pressed={coupon.active}
+          className={badgeStyles({ tone: coupon.active ? "success" : "neutral", size: "md" })}
         >
           {coupon.active ? "Ativo" : "Pausado"}
         </button>
 
-        <button
-          type="button"
+        <Button
+          variant="ghost-danger"
+          size="icon-sm"
+          aria-label={`Remover cupom ${coupon.code}`}
           title="Remover cupom"
           disabled={pending}
           onClick={remover}
-          className="grid h-8 w-8 place-items-center rounded-md text-app-muted hover:bg-app-danger/10 hover:text-app-danger"
         >
           <X size={14} />
-        </button>
-      </div>
-    </li>
+        </Button>
+      </ListRowActions>
+    </ListRow>
   );
 }

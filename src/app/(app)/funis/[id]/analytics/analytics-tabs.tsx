@@ -1,9 +1,7 @@
 "use client";
 
-import { useState } from "react";
-
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { FunnelPixels } from "@/funnel/schema";
-import { cn } from "@/lib/cn";
 import type {
   FunnelOverview,
   QuestionBreakdown,
@@ -56,27 +54,17 @@ export function AnalyticsTabs({
   hasAnyData: boolean;
   hasEnoughData: boolean;
 }) {
-  const [aba, setAba] = useState<Aba>("visao_geral");
-
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-1 rounded-lg border border-app-border p-1">
+    <Tabs defaultValue="visao_geral" className="flex flex-col gap-4">
+      <TabsList>
         {ABAS.map(({ chave, rotulo }) => (
-          <button
-            key={chave}
-            type="button"
-            onClick={() => setAba(chave)}
-            className={cn(
-              "rounded-md px-3 py-1.5 text-sm transition-colors",
-              aba === chave ? "bg-app-surface-2 text-app-text" : "text-app-muted hover:text-app-text",
-            )}
-          >
+          <TabsTrigger key={chave} value={chave}>
             {rotulo}
-          </button>
+          </TabsTrigger>
         ))}
-      </div>
+      </TabsList>
 
-      {aba === "visao_geral" && (
+      <TabsContent value="visao_geral">
         <OverviewTab
           funnelId={funnelId}
           overview={overview}
@@ -84,18 +72,22 @@ export function AnalyticsTabs({
           hasAnyData={hasAnyData}
           hasEnoughData={hasEnoughData}
         />
-      )}
-      {aba === "funil" && (
+      </TabsContent>
+      <TabsContent value="funil">
         <DropoffTab funnelId={funnelId} dropoff={dropoff} hasAnyData={hasAnyData} hasEnoughData={hasEnoughData} />
-      )}
-      {aba === "respostas" && (
+      </TabsContent>
+      <TabsContent value="respostas">
         <AnswersTab funnelId={funnelId} answers={answers} hasAnyData={hasAnyData} hasEnoughData={hasEnoughData} />
-      )}
-      {aba === "origem" && (
+      </TabsContent>
+      <TabsContent value="origem">
         <TrafficTab funnelId={funnelId} traffic={traffic} hasAnyData={hasAnyData} hasEnoughData={hasEnoughData} />
-      )}
-      {aba === "rastreamento" && <TrackingSettingsTab funnelId={funnelId} pixels={pixels} />}
-      {aba === "dominio" && <DomainSettingsTab funnelId={funnelId} domains={domains} appHostname={appHostname} />}
-    </div>
+      </TabsContent>
+      <TabsContent value="rastreamento">
+        <TrackingSettingsTab funnelId={funnelId} pixels={pixels} />
+      </TabsContent>
+      <TabsContent value="dominio">
+        <DomainSettingsTab funnelId={funnelId} domains={domains} appHostname={appHostname} />
+      </TabsContent>
+    </Tabs>
   );
 }

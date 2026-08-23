@@ -4,6 +4,8 @@ import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, X
 
 import type { TrendPoint } from "@/server/analytics/queries";
 
+import { EIXO_CATEGORIA, EIXO_VALOR, GRADE, TOOLTIP_STYLE } from "./chart-theme";
+
 /** Duas séries = identidade categórica: slots 1 e 2 da paleta, nessa ordem fixa. */
 const VIEWS_COLOR = "var(--color-chart-1)";
 const COMPLETIONS_COLOR = "var(--color-chart-2)";
@@ -12,7 +14,9 @@ export function TrendChart({ data }: { data: TrendPoint[] }) {
   return (
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+        {/* `left: 0`, não negativo: a margem negativa puxava o eixo Y pra fora
+            do SVG e cortava a primeira casa dos rótulos de dois dígitos. */}
+        <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="qf-views-fill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={VIEWS_COLOR} stopOpacity={0.12} />
@@ -24,31 +28,10 @@ export function TrendChart({ data }: { data: TrendPoint[] }) {
             </linearGradient>
           </defs>
 
-          <CartesianGrid stroke="var(--color-app-border)" vertical={false} />
-          <XAxis
-            dataKey="date"
-            tick={{ fill: "var(--color-app-muted)", fontSize: 11 }}
-            tickLine={false}
-            axisLine={{ stroke: "var(--color-app-border)" }}
-            minTickGap={24}
-          />
-          <YAxis
-            allowDecimals={false}
-            tick={{ fill: "var(--color-app-muted)", fontSize: 11 }}
-            tickLine={false}
-            axisLine={false}
-            width={32}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "var(--color-app-surface)",
-              border: "1px solid var(--color-app-border)",
-              borderRadius: 8,
-              fontSize: 12,
-              color: "var(--color-app-text)",
-            }}
-            labelStyle={{ color: "var(--color-app-muted)" }}
-          />
+          <CartesianGrid {...GRADE} />
+          <XAxis dataKey="date" {...EIXO_CATEGORIA} minTickGap={24} />
+          <YAxis {...EIXO_VALOR} width={32} />
+          <Tooltip contentStyle={TOOLTIP_STYLE.contentStyle} labelStyle={TOOLTIP_STYLE.labelStyle} />
           <Legend
             wrapperStyle={{ fontSize: 12, color: "var(--color-app-muted)" }}
             iconType="plainline"

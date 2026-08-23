@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageHeader, PageShell } from "@/components/ui/page-shell";
 import { RangeSwitcher } from "@/components/ui/range-switcher";
 import { parseFunnelDocument } from "@/funnel/schema";
 import { env } from "@/lib/env";
@@ -71,21 +72,16 @@ export default async function FunnelAnalyticsPage({ params, searchParams }: Page
   const hasEnoughData = overview.totalViews >= MIN_SESSIONS_FOR_INSIGHTS;
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8 md:px-8">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <Link
-            href="/funis"
-            className="mb-1 flex items-center gap-1.5 text-sm text-app-muted hover:text-app-text"
-          >
-            <ArrowLeft size={14} /> Funis
-          </Link>
-          <h1 className="text-2xl font-semibold">{funnel.name}</h1>
-          <p className="mt-1 text-sm text-app-muted">Analytics e rastreamento deste funil.</p>
-        </div>
+    <PageShell>
+      <Link href="/funis" className="mb-4 flex items-center gap-1.5 text-sm text-app-muted hover:text-app-text">
+        <ArrowLeft size={14} /> Funis
+      </Link>
 
-        <RangeSwitcher current={rangeKey} />
-      </header>
+      <PageHeader
+        title={funnel.name}
+        description="Analytics e rastreamento deste funil."
+        action={<RangeSwitcher current={rangeKey} />}
+      />
 
       <AnalyticsTabs
         funnelId={id}
@@ -100,6 +96,6 @@ export default async function FunnelAnalyticsPage({ params, searchParams }: Page
         hasAnyData={hasAnyData}
         hasEnoughData={hasEnoughData}
       />
-    </div>
+    </PageShell>
   );
 }

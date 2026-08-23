@@ -4,6 +4,8 @@ import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, 
 
 import type { QuestionBreakdown } from "@/server/analytics/queries";
 
+import { TOOLTIP_STYLE } from "./chart-theme";
+
 const BAR_COLOR = "var(--color-app-primary)";
 
 type ChoiceOptions = Extract<QuestionBreakdown, { kind: "choice" }>["options"];
@@ -32,15 +34,9 @@ export function AnswerBarChart({ options }: { options: ChoiceOptions }) {
             axisLine={false}
           />
           <Tooltip
-            cursor={{ fill: "var(--color-app-surface-2)" }}
-            contentStyle={{
-              background: "var(--color-app-surface)",
-              border: "1px solid var(--color-app-border)",
-              borderRadius: 8,
-              fontSize: 12,
-              color: "var(--color-app-text)",
-            }}
-            labelStyle={{ color: "var(--color-app-muted)" }}
+            cursor={TOOLTIP_STYLE.cursor}
+            contentStyle={TOOLTIP_STYLE.contentStyle}
+            labelStyle={TOOLTIP_STYLE.labelStyle}
             formatter={(value) => [`${value} respostas`, "Respostas"]}
           />
           <Bar dataKey="count" name="Respostas" fill={BAR_COLOR} radius={[0, 4, 4, 0]} maxBarSize={20}>

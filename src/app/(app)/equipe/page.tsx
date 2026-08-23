@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { PageHeader, PageShell } from "@/components/ui/page-shell";
 import { requireOrganization } from "@/server/auth/session";
 
 import { TeamManager } from "./team-manager";
@@ -10,15 +11,21 @@ export default async function EquipePage() {
   const { session, organization } = await requireOrganization();
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-8 md:px-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Equipe</h1>
-        <p className="mt-1 text-sm text-app-muted">
-          Quem tem acesso a &ldquo;{organization.name}&rdquo; e o que cada papel pode fazer.
-        </p>
-      </header>
+    <PageShell width="sm">
+      <PageHeader
+        title="Equipe"
+        description={`Quem tem acesso a “${organization.name}” e o que cada papel pode fazer.`}
+      />
 
-      <TeamManager currentUserId={session.user.id} currentRole={organization.role} />
-    </div>
+      {/* `organizationId` explícito: a sessão nem sempre tem
+          `activeOrganizationId` (só é gravado quando alguém troca de
+          organização de propósito), e sem ele a API do Better Auth recusa
+          listar membros. O servidor já resolveu qual é a organização ativa. */}
+      <TeamManager
+        currentUserId={session.user.id}
+        currentRole={organization.role}
+        organizationId={organization.id}
+      />
+    </PageShell>
   );
 }

@@ -1,12 +1,16 @@
 "use client";
 
-import { Check, Copy, Loader2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { X } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Field, Input } from "@/components/ui/field";
+import { Card } from "@/components/ui/card";
+import { CopyButton } from "@/components/ui/copy-button";
+import { Field, Input, Select } from "@/components/ui/field";
+import { ListRow, ListRowActions, ListRowMain } from "@/components/ui/list-row";
+import { Avatar, SectionLabel, Skeleton } from "@/components/ui/misc";
 import { authClient } from "@/lib/auth-client";
-import { cn } from "@/lib/cn";
 
 type Papel = "owner" | "admin" | "member";
 
@@ -36,22 +40,35 @@ const RÓTULOS_DE_PAPEL: Record<string, string> = {
  * depois de convidar, mostramos o link pra quem convidou compartilhar por
  * fora (WhatsApp, etc.), em vez de fingir que o convite já chegou por e-mail.
  */
-export function TeamManager({ currentUserId, currentRole }: { currentUserId: string; currentRole: string }) {
+export function TeamManager({
+  currentUserId,
+  currentRole,
+  organizationId,
+}: {
+  currentUserId: string;
+  currentRole: string;
+  organizationId: string;
+}) {
   const [membros, setMembros] = useState<Membro[] | null>(null);
   const [convites, setConvites] = useState<Convite[] | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
   const podeGerenciar = currentRole === "owner" || currentRole === "admin";
 
-  async function recarregar() {
+  // `useCallback` porque agora fecha sobre `organizationId` e é passada como
+  // callback pros filhos — sem isso ela muda de identidade a cada render.
+  const recarregar = useCallback(async () => {
     setErro(null);
     const [membrosResult, convitesResult] = await Promise.all([
-      authClient.organization.listMembers(),
-      authClient.organization.listInvitations(),
+      authClient.organization.listMembers({ query: { organizationId } }),
+      authClient.organization.listInvitations({ query: { organizationId } }),
     ]);
 
     if (membrosResult.error) {
       setErro(traduzErroOrg(membrosResult.error.code));
+      // Sem isto a lista fica em `null` pra sempre e o esqueleto de
+      // carregamento nunca sai da tela, escondendo o erro logo acima.
+      setMembros([]);
       return;
     }
     setMembros(membrosResult.data.members as Membro[]);
@@ -59,27 +76,31 @@ export function TeamManager({ currentUserId, currentRole }: { currentUserId: str
     if (!convitesResult.error) {
       setConvites((convitesResult.data as Convite[]).filter((c) => c.status === "pending"));
     }
-  }
+  }, [organizationId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- busca inicial de dado externo (API do Better Auth), não sincronização com outro estado local
     void recarregar();
-  }, []);
+  }, [recarregar]);
 
   return (
     <div className="flex flex-col gap-6">
-      {podeGerenciar && <ConvidarForm onConvidado={recarregar} />}
+      {podeGerenciar && <ConvidarForm organizationId={organizationId} onConvidado={recarregar} />}
 
-      {erro && (
-        <p role="alert" className="rounded-lg bg-app-danger/10 px-3 py-2 text-sm text-app-danger">
-          {erro}
-        </p>
-      )}
+      {erro && <Alert tone="danger">{erro}</Alert>}
 
       <section>
-        <h2 className="mb-3 text-sm font-medium text-app-muted">Membros</h2>
+        <SectionLabel>Membros</SectionLabel>
         {membros === null ? (
-          <Loader2 size={16} className="animate-spin text-app-muted" />
+          // Esqueleto no lugar do spinner solto: mantém a altura da lista e o
+          // layout não pula quando os membros chegam.
+          <ul className="flex flex-col gap-2">
+            {[0, 1].map((i) => (
+              <li key={i}>
+                <Skeleton className="h-[58px] w-full" />
+              </li>
+            ))}
+          </ul>
         ) : (
           <ul className="flex flex-col gap-2">
             {membros.map((membro) => (
@@ -88,6 +109,7 @@ export function TeamManager({ currentUserId, currentRole }: { currentUserId: str
                 membro={membro}
                 souEu={membro.userId === currentUserId}
                 podeGerenciar={podeGerenciar}
+                organizationId={organizationId}
                 onMudou={recarregar}
               />
             ))}
@@ -97,7 +119,7 @@ export function TeamManager({ currentUserId, currentRole }: { currentUserId: str
 
       {podeGerenciar && convites !== null && convites.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-medium text-app-muted">Convites pendentes</h2>
+          <SectionLabel>Convites pendentes</SectionLabel>
           <ul className="flex flex-col gap-2">
             {convites.map((convite) => (
               <ConviteRow key={convite.id} convite={convite} onCancelado={recarregar} />
@@ -109,13 +131,12 @@ export function TeamManager({ currentUserId, currentRole }: { currentUserId: str
   );
 }
 
-function ConvidarForm({ onConvidado }: { onConvidado: () => void }) {
+function ConvidarForm({ organizationId, onConvidado }: { organizationId: string; onConvidado: () => void }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Papel>("member");
   const [pending, setPending] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [link, setLink] = useState<string | null>(null);
-  const [copiado, setCopiado] = useState(false);
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -123,7 +144,7 @@ function ConvidarForm({ onConvidado }: { onConvidado: () => void }) {
     setLink(null);
     setPending(true);
 
-    const result = await authClient.organization.inviteMember({ email, role });
+    const result = await authClient.organization.inviteMember({ email, role, organizationId });
 
     setPending(false);
 
@@ -138,59 +159,46 @@ function ConvidarForm({ onConvidado }: { onConvidado: () => void }) {
   }
 
   return (
-    <form onSubmit={enviar} className="rounded-2xl border border-app-border bg-app-surface p-4">
-      <h2 className="text-sm font-medium">Convidar alguém</h2>
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="flex-1">
-          <Field label="E-mail">
-            <Input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="pessoa@email.com"
-            />
+    <Card padding="sm">
+      <form onSubmit={enviar}>
+        <h2 className="text-sm font-medium">Convidar alguém</h2>
+        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <Field label="E-mail">
+              <Input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="pessoa@email.com"
+              />
+            </Field>
+          </div>
+
+          <Field label="Papel">
+            <Select value={role} onChange={(e) => setRole(e.target.value as Papel)}>
+              <option value="member">Membro</option>
+              <option value="admin">Admin</option>
+            </Select>
           </Field>
+
+          <Button type="submit" loading={pending} disabled={!email.trim()}>
+            Convidar
+          </Button>
         </div>
 
-        <Field label="Papel">
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value as Papel)}
-            className="h-10 rounded-lg border border-app-border bg-app-surface px-3 text-sm text-app-text focus:border-app-primary focus:outline-none"
-          >
-            <option value="member">Membro</option>
-            <option value="admin">Admin</option>
-          </select>
-        </Field>
+        {erro && <p className="mt-2 text-xs text-app-danger">{erro}</p>}
 
-        <Button type="submit" disabled={pending || !email.trim()}>
-          {pending ? <Loader2 size={14} className="animate-spin" /> : "Convidar"}
-        </Button>
-      </div>
-
-      {erro && <p className="mt-2 text-xs text-app-danger">{erro}</p>}
-
-      {link && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg bg-app-surface-2 px-3 py-2 text-xs">
-          <span className="min-w-0 flex-1 truncate text-app-muted">
-            Ainda não enviamos e-mail automático — copie e mande este link pra pessoa: {link}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              void navigator.clipboard.writeText(link);
-              setCopiado(true);
-              setTimeout(() => setCopiado(false), 2000);
-            }}
-            className="flex shrink-0 items-center gap-1 rounded-md border border-app-border px-2 py-1 hover:border-app-primary/60"
-          >
-            {copiado ? <Check size={12} /> : <Copy size={12} />}
-            {copiado ? "Copiado" : "Copiar"}
-          </button>
-        </div>
-      )}
-    </form>
+        {link && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-app-surface-2 px-3 py-2 text-xs">
+            <span className="min-w-0 flex-1 truncate text-app-muted">
+              Ainda não enviamos e-mail automático — copie e mande este link pra pessoa: {link}
+            </span>
+            <CopyButton value={link} />
+          </div>
+        )}
+      </form>
+    </Card>
   );
 }
 
@@ -198,11 +206,13 @@ function MembroRow({
   membro,
   souEu,
   podeGerenciar,
+  organizationId,
   onMudou,
 }: {
   membro: Membro;
   souEu: boolean;
   podeGerenciar: boolean;
+  organizationId: string;
   onMudou: () => void;
 }) {
   const [pending, setPending] = useState(false);
@@ -211,7 +221,11 @@ function MembroRow({
   async function mudarPapel(novoPapel: string) {
     setPending(true);
     setErro(null);
-    const result = await authClient.organization.updateMemberRole({ memberId: membro.id, role: novoPapel });
+    const result = await authClient.organization.updateMemberRole({
+      memberId: membro.id,
+      role: novoPapel,
+      organizationId,
+    });
     setPending(false);
     if (result.error) setErro(traduzErroOrg(result.error.code));
     else onMudou();
@@ -220,7 +234,10 @@ function MembroRow({
   async function remover() {
     setPending(true);
     setErro(null);
-    const result = await authClient.organization.removeMember({ memberIdOrEmail: membro.userId });
+    const result = await authClient.organization.removeMember({
+      memberIdOrEmail: membro.userId,
+      organizationId,
+    });
     setPending(false);
     if (result.error) setErro(traduzErroOrg(result.error.code));
     else onMudou();
@@ -229,48 +246,50 @@ function MembroRow({
   const podeMudarEsteMembro = podeGerenciar && membro.role !== "owner";
 
   return (
-    <li
-      className={cn(
-        "flex items-center justify-between gap-3 rounded-lg border border-app-border bg-app-surface px-3 py-2.5",
-        pending && "opacity-60",
-      )}
-    >
-      <div className="min-w-0">
-        <p className="truncate text-sm text-app-text">
-          {membro.user.name} {souEu && <span className="text-app-muted">(você)</span>}
-        </p>
-        <p className="truncate text-xs text-app-muted">{membro.user.email}</p>
-        {erro && <p className="mt-1 text-xs text-app-danger">{erro}</p>}
-      </div>
+    <ListRow pending={pending}>
+      <Avatar name={membro.user.name} size={32} className="text-sm" />
 
-      <div className="flex shrink-0 items-center gap-2">
+      <ListRowMain
+        title={
+          <>
+            {membro.user.name} {souEu && <span className="font-normal text-app-muted">(você)</span>}
+          </>
+        }
+      >
+        <span className="block truncate">{membro.user.email}</span>
+        {erro && <span className="mt-1 block text-app-danger">{erro}</span>}
+      </ListRowMain>
+
+      <ListRowActions>
         {podeMudarEsteMembro ? (
-          <select
+          <Select
             value={membro.role}
             disabled={pending}
+            aria-label={`Papel de ${membro.user.name}`}
             onChange={(e) => void mudarPapel(e.target.value)}
-            className="h-8 rounded-md border border-app-border bg-app-surface px-2 text-xs text-app-text focus:border-app-primary focus:outline-none"
+            className="h-8 w-auto pr-8 pl-2.5 text-xs"
           >
             <option value="member">Membro</option>
             <option value="admin">Admin</option>
-          </select>
+          </Select>
         ) : (
           <span className="text-xs text-app-muted">{RÓTULOS_DE_PAPEL[membro.role] ?? membro.role}</span>
         )}
 
         {podeGerenciar && !souEu && membro.role !== "owner" && (
-          <button
-            type="button"
+          <Button
+            variant="ghost-danger"
+            size="icon-sm"
+            aria-label={`Remover ${membro.user.name} da organização`}
             title="Remover da organização"
             disabled={pending}
             onClick={() => void remover()}
-            className="grid h-8 w-8 place-items-center rounded-md text-app-muted hover:bg-app-danger/10 hover:text-app-danger"
           >
             <X size={14} />
-          </button>
+          </Button>
         )}
-      </div>
-    </li>
+      </ListRowActions>
+    </ListRow>
   );
 }
 
@@ -285,21 +304,17 @@ function ConviteRow({ convite, onCancelado }: { convite: Convite; onCancelado: (
   }
 
   return (
-    <li className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-app-border px-3 py-2.5">
-      <div className="min-w-0">
-        <p className="truncate text-sm text-app-text">{convite.email}</p>
-        <p className="text-xs text-app-muted">{RÓTULOS_DE_PAPEL[convite.role ?? "member"] ?? convite.role}</p>
-      </div>
+    <ListRow pending={pending} className="border-dashed bg-transparent">
+      <ListRowMain title={convite.email}>
+        {RÓTULOS_DE_PAPEL[convite.role ?? "member"] ?? convite.role}
+      </ListRowMain>
 
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => void cancelar()}
-        className="shrink-0 text-xs text-app-muted underline underline-offset-2 hover:text-app-text disabled:opacity-50"
-      >
-        Cancelar
-      </button>
-    </li>
+      <ListRowActions>
+        <Button variant="ghost" size="sm" disabled={pending} onClick={() => void cancelar()}>
+          Cancelar
+        </Button>
+      </ListRowActions>
+    </ListRow>
   );
 }
 

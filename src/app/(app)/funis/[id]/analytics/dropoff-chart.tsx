@@ -4,6 +4,8 @@ import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, 
 
 import type { StepDropoff } from "@/server/analytics/queries";
 
+import { TOOLTIP_STYLE } from "./chart-theme";
+
 /** Uma métrica só (sessões por etapa), não identidade — um hue só, o do app. */
 const BAR_COLOR = "var(--color-app-primary)";
 
@@ -32,15 +34,9 @@ export function DropoffChart({ data }: { data: StepDropoff[] }) {
             axisLine={false}
           />
           <Tooltip
-            cursor={{ fill: "var(--color-app-surface-2)" }}
-            contentStyle={{
-              background: "var(--color-app-surface)",
-              border: "1px solid var(--color-app-border)",
-              borderRadius: 8,
-              fontSize: 12,
-              color: "var(--color-app-text)",
-            }}
-            labelStyle={{ color: "var(--color-app-muted)" }}
+            cursor={TOOLTIP_STYLE.cursor}
+            contentStyle={TOOLTIP_STYLE.contentStyle}
+            labelStyle={TOOLTIP_STYLE.labelStyle}
             formatter={(value) => [`${value} sessões`, "Sessões"]}
           />
           <Bar dataKey="sessions" name="Sessões" fill={BAR_COLOR} radius={[0, 4, 4, 0]} maxBarSize={22}>
