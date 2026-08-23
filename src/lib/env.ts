@@ -12,6 +12,13 @@ const schema = z.object({
   BETTER_AUTH_SECRET: z.string().min(16),
   BETTER_AUTH_URL: z.string().url(),
 
+  /**
+   * Chave simétrica (AES-256-GCM) que cifra segredo de terceiro antes de
+   * gravar no banco — hoje, o access/refresh token da conexão Mercado Pago de
+   * cada organização. 32 bytes em base64: `openssl rand -base64 32`.
+   */
+  ENCRYPTION_KEY: z.string().min(1),
+
   S3_ENDPOINT: z.string().url(),
   S3_REGION: z.string().min(1),
   S3_BUCKET: z.string().min(1),
@@ -28,6 +35,23 @@ const schema = z.object({
 
   EMAIL_FROM: z.string().default("nao-responda@localhost"),
   RESEND_API_KEY: z.string().optional(),
+
+  /**
+   * Credenciais da Application do Mercado Pago — pertencem à plataforma
+   * (Ulisses), não a um cliente. Cada organização conecta a própria conta por
+   * OAuth; estas chaves só autenticam a troca de código por token nesse fluxo.
+   */
+  MERCADOPAGO_APP_ID: z.string().optional(),
+  MERCADOPAGO_CLIENT_SECRET: z.string().optional(),
+  MERCADOPAGO_WEBHOOK_SECRET: z.string().optional(),
+
+  /**
+   * Conta Mercado Pago da PRÓPRIA plataforma (Ulisses), separada da conexão
+   * OAuth acima — usada só pra cobrar a assinatura das organizações que usam
+   * o SaaS, nunca pra cobrar o cliente final de ninguém.
+   */
+  MERCADOPAGO_PLATFORM_ACCESS_TOKEN: z.string().optional(),
+  MERCADOPAGO_PLATFORM_WEBHOOK_SECRET: z.string().optional(),
 });
 
 let cached: z.infer<typeof schema> | null = null;

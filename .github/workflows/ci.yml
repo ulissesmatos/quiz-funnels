@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+
+      # Os testes de e2e (pasta e2e/) sobem o app inteiro contra um Postgres
+      # de verdade e não estão neste pipeline ainda — precisam do
+      # docker-compose (Postgres + MinIO) rodando antes do Playwright, o que
+      # é um passo à parte pra montar e validar direito, não algo pra
+      # adivinhar aqui sem poder testar a run.
