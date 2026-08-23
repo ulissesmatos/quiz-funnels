@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { BarChart3, ExternalLink } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -50,16 +50,24 @@ export default async function FunisPage() {
 
                 <div className="mt-4 flex items-center justify-between">
                   <StatusBadge published={funnel.isPublished} />
-                  {funnel.isPublished && (
-                    <a
-                      href={`/f/${funnel.slug}`}
-                      target="_blank"
-                      rel="noreferrer"
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/funis/${funnel.id}/analytics`}
                       className="flex items-center gap-1 text-xs text-app-muted hover:text-app-text"
                     >
-                      Ver <ExternalLink size={12} />
-                    </a>
-                  )}
+                      Analytics <BarChart3 size={12} />
+                    </Link>
+                    {funnel.isPublished && (
+                      <a
+                        href={`/f/${funnel.slug}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-xs text-app-muted hover:text-app-text"
+                      >
+                        Ver <ExternalLink size={12} />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             </li>
