@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { FunnelView } from "@/funnel/render/funnel-view";
+import { TrackedFunnelView } from "@/funnel/render/tracked-funnel-view";
 import { parseFunnelDocument } from "@/funnel/schema";
 import { customFontFaces, googleFontsHref } from "@/funnel/theme/css";
 import { coresDoPreset } from "@/funnel/theme/presets";
+import { siteUrl } from "@/lib/site";
 import { getPublishedFunnelBySlug } from "@/server/funnels/queries";
+import { getPublicKeyForFunnel } from "@/server/mercadopago/connections";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -28,13 +30,32 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
+    alternates: { canonical: `/f/${slug}` },
     robots: seo.noindex ? { index: false, follow: false } : undefined,
     icons: seo.faviconUrl ? { icon: seo.faviconUrl } : undefined,
     openGraph: {
       title,
       description,
-      images: seo.imageUrl ? [seo.imageUrl] : undefined,
+      url: `/f/${slug}`,
       type: "website",
+      siteName: "FunilQuiz",
+      locale: "pt_BR",
+      images: [
+        seo.imageUrl
+          ? { url: seo.imageUrl }
+          : {
+              url: new URL("/opengraph-image", siteUrl()).toString(),
+              width: 1200,
+              height: 630,
+              alt: "FunilQuiz — construtor de funis interativos",
+            },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [seo.imageUrl ?? new URL("/twitter-image", siteUrl()).toString()],
     },
   };
 }
@@ -53,6 +74,7 @@ export default async function FunnelPublicPage({ params, searchParams }: PagePro
   const query = await searchParams;
   const fontsHref = googleFontsHref(doc.theme);
   const fontFaces = customFontFaces(doc.theme);
+  const mercadoPagoPublicKey = await getPublicKeyForFunnel(published.funnelId);
 
   // Igual ao `.fn-root` em `autoThemeCss`: no automático o fundo do body
   // também precisa da media query, senão ele fica preso na cor de reserva
@@ -77,7 +99,13 @@ export default async function FunnelPublicPage({ params, searchParams }: PagePro
           acompanhar o tema do funil, senão as bordas de overscroll destoam. */}
       <style>{`${corDoBody}${fontFaces}`}</style>
 
-      <FunnelView document={doc} searchParams={query} />
+      <TrackedFunnelView
+        document={doc}
+        funnelId={published.funnelId}
+        funnelVersionId={published.versionId}
+        searchParams={query}
+        mercadoPagoPublicKey={mercadoPagoPublicKey ?? undefined}
+      />
     </>
   );
 }
