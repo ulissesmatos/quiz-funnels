@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { requireOrganization } from "@/server/auth/session";
@@ -10,9 +11,10 @@ import { AppSidebar } from "./_components/app-sidebar";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const { session, organization } = await requireOrganization();
-  const [{ defaultThemeMode }, subscription] = await Promise.all([
+  const [{ defaultThemeMode }, subscription, cookieStore] = await Promise.all([
     getOrganizationSettings(),
     getOrganizationSubscription(organization.id),
+    cookies(),
   ]);
 
   const bloqueado = isEditingBlocked(subscription);
@@ -24,8 +26,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     >
       <AppSidebar
         userName={session.user.name}
+        userEmail={session.user.email}
+        userImage={session.user.image ?? null}
         organizationName={organization.name}
         isSuperAdmin={session.user.isSuperAdmin}
+        defaultCollapsed={cookieStore.get("sidebar-collapsed")?.value === "1"}
       />
 
       <main className="flex-1 overflow-x-hidden">
