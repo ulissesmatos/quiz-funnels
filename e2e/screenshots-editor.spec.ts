@@ -18,6 +18,17 @@ test("captura o editor", async ({ page }, testInfo) => {
     const alvo = page.getByRole("button", { name: botao });
     if (await alvo.isVisible()) await alvo.click();
   };
+  /**
+   * No celular os painéis viram gaveta com um backdrop que cobre a tela
+   * inteira, topbar inclusive — sem fechar antes, qualquer clique no topo
+   * acerta o backdrop. No desktop não existe gaveta e isto não faz nada.
+   */
+  const fecharPainel = async () => {
+    const backdrop = page.getByRole("button", { name: "Fechar painel" });
+    // Canto superior: o backdrop ocupa a tela toda, mas a gaveta cobre a
+    // metade de baixo — clicar no centro acertaria a gaveta.
+    if (await backdrop.isVisible()) await backdrop.click({ position: { x: 8, y: 8 } });
+  };
 
   // Tela de pergunta, com bloco selecionado
   await selecionarTela(page, "Objetivo principal");
@@ -34,6 +45,7 @@ test("captura o editor", async ({ page }, testInfo) => {
   await page.waitForTimeout(300);
   await page.screenshot({ path: `screenshots/editor-${nome}-copiloto.png` });
 
+  await fecharPainel();
   await page.getByRole("button", { name: "Fluxo" }).click();
   await expect(page.locator(".fl-node").first()).toBeVisible({ timeout: 30_000 });
   await page.waitForTimeout(1200);

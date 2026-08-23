@@ -84,8 +84,12 @@ async function abrirFunil(page: Page, nome: string) {
 }
 
 async function criarFunil(page: Page, nome: string) {
-  await page.getByPlaceholder("Nome do novo funil").fill(nome);
-  await page.getByRole("button", { name: "Criar" }).click();
+  // O funil nasce por modal. O gatilho e o submit têm o mesmo nome acessível,
+  // então o segundo precisa ser escopado ao diálogo.
+  await page.getByRole("button", { name: "Criar funil" }).click();
+  const dialogo = page.getByRole("dialog");
+  await dialogo.getByLabel("Nome do funil").fill(nome);
+  await dialogo.getByRole("button", { name: "Criar funil" }).click();
   await expect(page.locator(".ed-canvas-frame")).toContainText("Sua promessa aqui", ESPERA_LENTA);
 }
 

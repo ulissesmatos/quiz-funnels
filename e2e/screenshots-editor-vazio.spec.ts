@@ -16,6 +16,13 @@ test("captura o editor com bloco invisível", async ({ page }, testInfo) => {
   await page.getByRole("link", { name: /Vitrine de blocos/ }).click();
   await expect(page.locator(".ed-canvas-frame")).toBeVisible({ timeout: 45_000 });
 
+  // No celular a lista de telas mora numa gaveta; no desktop já está na tela.
+  const abrirGaveta = async () => {
+    const gaveta = page.getByRole("button", { name: "Telas e blocos" });
+    if (await gaveta.isVisible()) await gaveta.click();
+  };
+
+  await abrirGaveta();
   await page.getByRole("button", { name: /Oferta/ }).first().click();
   await expect(page.locator(".ed-vazio")).toBeVisible();
   await page.waitForTimeout(600);
@@ -23,6 +30,7 @@ test("captura o editor com bloco invisível", async ({ page }, testInfo) => {
   await page.screenshot({ path: `screenshots/editor-${testInfo.project.name}-vazio.png` });
 
   // E a paleta, agora numa aba própria.
+  await abrirGaveta();
   await page.getByRole("button", { name: "Elementos" }).click();
   await page.waitForTimeout(300);
   await page.screenshot({ path: `screenshots/editor-${testInfo.project.name}-elementos.png` });

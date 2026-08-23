@@ -26,8 +26,12 @@ async function entrar(page: Page) {
 }
 
 async function criarFunil(page: Page, nome: string) {
-  await page.getByPlaceholder("Nome do novo funil").fill(nome);
-  await page.getByRole("button", { name: "Criar" }).click();
+  // O funil nasce por modal. O gatilho e o submit têm o mesmo nome acessível,
+  // então o segundo precisa ser escopado ao diálogo.
+  await page.getByRole("button", { name: "Criar funil" }).click();
+  const dialogo = page.getByRole("dialog");
+  await dialogo.getByLabel("Nome do funil").fill(nome);
+  await dialogo.getByRole("button", { name: "Criar funil" }).click();
   // Escopado ao canvas: o anunciador de rota do Next repete o mesmo texto.
   await expect(page.locator(".ed-canvas-frame")).toContainText("Sua promessa aqui", ESPERA_LENTA);
 }
@@ -111,8 +115,14 @@ async function abrirAjustes(page: Page) {
   if (await botao.isVisible()) await botao.click();
 }
 
-/** No celular a gaveta cobre o canvas; no desktop não existe gaveta. */
+/**
+ * No celular a gaveta cobre o canvas; no desktop não existe gaveta.
+ *
+ * O clique vai no canto superior esquerdo, não no centro: o backdrop ocupa a
+ * tela inteira mas a gaveta (z maior) cobre a metade de baixo, então um clique
+ * no meio acerta a gaveta e não fecha nada.
+ */
 async function fecharGaveta(page: Page) {
   const fechar = page.getByRole("button", { name: "Fechar painel" });
-  if (await fechar.isVisible()) await fechar.click();
+  if (await fechar.isVisible()) await fechar.click({ position: { x: 8, y: 8 } });
 }
