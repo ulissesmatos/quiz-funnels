@@ -17,7 +17,11 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Imagem de produção enxuta: só o server.js + deps realmente usadas, sem o
   // node_modules inteiro — é o que o Dockerfile multi-stage copia no final.
-  output: "standalone",
+  // A Vercel tem o próprio empacotamento de Serverless Functions e não lê
+  // esse formato — ela seta VERCEL=1 no ambiente de build, então "standalone"
+  // fica de fora só ali (senão o build da Vercel quebra procurando os
+  // *.nft.json que o modo standalone não gera).
+  output: process.env.VERCEL ? undefined : "standalone",
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
