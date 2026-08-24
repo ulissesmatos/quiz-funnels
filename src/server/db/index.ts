@@ -25,3 +25,5 @@ if (process.env.NODE_ENV !== "production") {
 export const db = drizzle(client, { schema });
 export { schema };
 export type Db = typeof db;
+/** O `tx` recebido por `db.transaction(async (tx) => ...)` — sem `$client`, mas com a mesma query builder. */
+export type DbOrTx = Db | Parameters<Parameters<Db["transaction"]>[0]>[0];

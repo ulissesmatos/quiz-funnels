@@ -12,6 +12,11 @@ import { member, organization } from "@/server/db/schema";
  * Cria a organização pessoal de um usuário recém-cadastrado e o registra como
  * dono. Chamado pelo hook de criação de usuário do Better Auth, para que
  * ninguém fique num estado "logado mas sem workspace".
+ *
+ * As três escritas (org, membership, assinatura) rodam numa única transação —
+ * tudo-ou-nada. Sem isso, qualquer interrupção no meio (timeout, conexão
+ * derrubada) deixa um usuário com organização mas sem membership: sessão
+ * válida, mas sem workspace nenhum pra entrar, um estado sem saída sozinho.
  */
 export async function createPersonalOrganization(user: {
   id: string;
@@ -23,22 +28,24 @@ export async function createPersonalOrganization(user: {
   const now = new Date();
   const organizationId = nanoid();
 
-  await db.insert(organization).values({
-    id: organizationId,
-    name: user.name || "Meu workspace",
-    slug,
-    createdAt: now,
-  });
+  await db.transaction(async (tx) => {
+    await tx.insert(organization).values({
+      id: organizationId,
+      name: user.name || "Meu workspace",
+      slug,
+      createdAt: now,
+    });
 
-  await db.insert(member).values({
-    id: nanoid(),
-    organizationId,
-    userId: user.id,
-    role: "owner",
-    createdAt: now,
-  });
+    await tx.insert(member).values({
+      id: nanoid(),
+      organizationId,
+      userId: user.id,
+      role: "owner",
+      createdAt: now,
+    });
 
-  await startTrialSubscription(organizationId);
+    await startTrialSubscription(organizationId, tx);
+  });
 
   return organizationId;
 }

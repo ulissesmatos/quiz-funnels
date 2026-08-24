@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { MercadoPagoConfig, Payment, PreApproval } from "mercadopago";
 
 import { env } from "@/lib/env";
-import { db } from "@/server/db";
+import { db, type DbOrTx } from "@/server/db";
 import { organizationSubscriptions, type Plan } from "@/server/db/schema";
 
 import { PIX_ANNUAL_DISCOUNT } from "./constants";
@@ -19,13 +19,17 @@ export type BillingCycle = "monthly" | "annual";
  * plugin) quanto pelo hook `afterCreateOrganization` (org criada depois,
  * pela API do Better Auth). `onConflictDoNothing` deixa a função idempotente:
  * nunca vale a pena falhar o cadastro por causa disto.
+ *
+ * Aceita um `dbClient` opcional (uma `tx` de transação) pra poder ser chamada
+ * como parte de um `db.transaction(...)` maior — ver `createPersonalOrganization`,
+ * que precisa que org + membership + assinatura sejam tudo-ou-nada.
  */
-export async function startTrialSubscription(organizationId: string): Promise<void> {
+export async function startTrialSubscription(organizationId: string, dbClient: DbOrTx = db): Promise<void> {
   const plan = await getFeaturedPlan();
   const trialDays = plan?.trialDays ?? 7;
   const trialEndsAt = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
 
-  await db
+  await dbClient
     .insert(organizationSubscriptions)
     .values({ organizationId, planId: plan?.id ?? null, status: "trialing", trialEndsAt })
     .onConflictDoNothing({ target: organizationSubscriptions.organizationId });
