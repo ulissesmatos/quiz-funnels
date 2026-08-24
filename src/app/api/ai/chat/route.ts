@@ -179,13 +179,20 @@ export async function POST(request: Request) {
     // aqui (o `reasoning` padrão do AI SDK não chega a ele). "Pensar mais" no
     // modo cuidadoso é isto de verdade, não só um plano mais longo em texto.
     //
-    // Fora do modo cuidadoso, precisa ir explícito como "none" — deixar
-    // `undefined` não desliga o raciocínio, só devolve a decisão para o
-    // default do modelo por trás do OpenRouter, que em vários modelos de
-    // raciocínio é "ligado" por padrão. Era isso que fazia respostas comuns
-    // demorarem dezenas de segundos mesmo com o Capricho desativado.
+    // Fora do modo cuidadoso, precisa ir explícito — deixar `undefined` não
+    // desliga o raciocínio, só devolve a decisão para o default do modelo
+    // por trás do OpenRouter, que em vários é "ligado" por padrão. Era isso
+    // que fazia respostas comuns demorarem dezenas de segundos mesmo com o
+    // Capricho desativado.
+    //
+    // "minimal", não "none": alguns modelos por trás do OpenRouter (ex.:
+    // stealth/ox-alpha) tornam o raciocínio obrigatório e rejeitam a
+    // requisição inteira com "none" ("Reasoning is mandatory for this
+    // endpoint and cannot be disabled") — "minimal" ainda pede raciocínio
+    // (satisfaz esse tipo de modelo) só que no menor esforço possível, então
+    // continua rápido sem quebrar quem exige a etapa.
     providerOptions: {
-      openrouter: { reasoning: thorough ? { effort: "high" } : { effort: "none" } },
+      openrouter: { reasoning: thorough ? { effort: "high" } : { effort: "minimal" } },
     },
     /**
      * Sem isto, o prompt de sistema é montado uma vez, antes da primeira
