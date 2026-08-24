@@ -106,7 +106,7 @@ function renderBloco(bloco: Bloco, index: number): ReactNode {
     case "titulo": {
       const Tag = `h${Math.min(bloco.nivel + 2, 4)}` as "h3" | "h4";
       return (
-        <Tag key={index} className="text-sm font-semibold">
+        <Tag key={index} className="text-sm font-semibold break-words">
           {renderInline(bloco.texto, `t${index}`)}
         </Tag>
       );
@@ -117,7 +117,10 @@ function renderBloco(bloco: Bloco, index: number): ReactNode {
       return (
         <Lista
           key={index}
-          className={cn("space-y-0.5 pl-4 text-sm leading-relaxed", bloco.ordenada ? "list-decimal" : "list-disc")}
+          className={cn(
+            "space-y-0.5 pl-4 text-sm leading-relaxed break-words",
+            bloco.ordenada ? "list-decimal" : "list-disc",
+          )}
         >
           {bloco.itens.map((item, i) => (
             <li key={i}>{renderInline(item, `l${index}-${i}`)}</li>
@@ -136,7 +139,7 @@ function renderBloco(bloco: Bloco, index: number): ReactNode {
     case "paragrafo":
     default:
       return (
-        <p key={index} className="text-sm leading-relaxed whitespace-pre-wrap">
+        <p key={index} className="text-sm leading-relaxed break-words whitespace-pre-wrap">
           {renderInline(bloco.texto, `p${index}`)}
         </p>
       );
@@ -158,7 +161,7 @@ function renderInline(fonte: string, prefixo: string): ReactNode[] {
 
     if (segmento.startsWith("`") && segmento.endsWith("`") && segmento.length > 2) {
       nodes.push(
-        <code key={key} className="rounded bg-app-surface-2 px-1 py-0.5 text-[0.85em]">
+        <code key={key} className="rounded bg-app-surface-2 px-1 py-0.5 text-[0.85em] break-words">
           {segmento.slice(1, -1)}
         </code>,
       );

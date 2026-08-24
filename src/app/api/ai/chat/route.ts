@@ -178,7 +178,15 @@ export async function POST(request: Request) {
     // provider deste projeto cujo build atual honra `reasoning`, e só por
     // aqui (o `reasoning` padrão do AI SDK não chega a ele). "Pensar mais" no
     // modo cuidadoso é isto de verdade, não só um plano mais longo em texto.
-    providerOptions: thorough ? { openrouter: { reasoning: { effort: "high" } } } : undefined,
+    //
+    // Fora do modo cuidadoso, precisa ir explícito como "none" — deixar
+    // `undefined` não desliga o raciocínio, só devolve a decisão para o
+    // default do modelo por trás do OpenRouter, que em vários modelos de
+    // raciocínio é "ligado" por padrão. Era isso que fazia respostas comuns
+    // demorarem dezenas de segundos mesmo com o Capricho desativado.
+    providerOptions: {
+      openrouter: { reasoning: thorough ? { effort: "high" } : { effort: "none" } },
+    },
     /**
      * Sem isto, o prompt de sistema é montado uma vez, antes da primeira
      * ferramenta — o "Funil atual" nele fica congelado no estado de ANTES

@@ -25,9 +25,9 @@
      "IA", painel do copiloto, tag "Novo") e a tags de destaque. Nunca em CTA
      primário (isso é papel do primary) nem confundir com o verde semântico
      de sucesso. */
-  --color-app-accent: #baf24a;
-  --color-app-accent-hover: #a6de3a;
-  --color-app-accent-fg: #14210a;
+  --color-app-accent: #22d3ee;
+  --color-app-accent-hover: #06b6d4;
+  --color-app-accent-fg: #083344;
 
   /* Paleta exclusiva da landing. O azul conduz a marca; os demais tons
      entram somente como apoio, preservando a leitura limpa do produto. */
@@ -137,10 +137,10 @@
     --color-app-danger: #dc2626;
     --color-app-success: #16a34a;
     --color-app-warning: #b45309;
-    /* Mais saturado que no escuro — lima claro lava contra fundo branco. */
-    --color-app-accent: #84cc16;
-    --color-app-accent-hover: #72b30a;
-    --color-app-accent-fg: #0f1a05;
+    /* Mais saturado que no escuro — ciano claro lava contra fundo branco. */
+    --color-app-accent: #0891b2;
+    --color-app-accent-hover: #0e7490;
+    --color-app-accent-fg: #042a33;
 
     --color-chart-1: #2a78d6;
     --color-chart-2: #eb6834;
@@ -167,9 +167,9 @@
   --color-app-danger: #dc2626;
   --color-app-success: #16a34a;
   --color-app-warning: #b45309;
-  --color-app-accent: #84cc16;
-  --color-app-accent-hover: #72b30a;
-  --color-app-accent-fg: #0f1a05;
+  --color-app-accent: #0891b2;
+  --color-app-accent-hover: #0e7490;
+  --color-app-accent-fg: #042a33;
 
   --color-chart-1: #2a78d6;
   --color-chart-2: #eb6834;
@@ -183,17 +183,26 @@
   --shadow-app-lg: 0 20px 60px rgba(16, 20, 40, 0.12);
 }
 
-html,
-body {
-  height: 100%;
-}
+/**
+ * Em `@layer base`: sem isto, estas regras ficam fora de qualquer layer do
+ * Tailwind e por cascata sempre vencem contra classes de utilitário (mesmo
+ * `outline-none` aplicado direto num elemento) — foi o que causava o "quadrado
+ * dentro de quadrado" no campo do copiloto: o `:focus-visible` global ganhava
+ * do `outline-none` da textarea. Dentro de `base`, a camada `utilities` do
+ * Tailwind volta a vencer normalmente quando um componente pede o contrário.
+ */
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
 
-body {
-  background: var(--color-app-bg);
-  color: var(--color-app-text);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-}
+  body {
+    background: var(--color-app-bg);
+    color: var(--color-app-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
 
 /**
  * Barras de rolagem discretas no shell.
@@ -243,4 +252,5 @@ body {
 
 ::selection {
   background: color-mix(in oklab, var(--color-app-primary) 40%, transparent);
+}
 }

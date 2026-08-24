@@ -172,7 +172,7 @@ function EditorLayout({ funnelId, leadUsage }: { funnelId: string; leadUsage: Le
           >
             {/* Telas e elementos em abas: empilhados, um funil de 26 telas
                 empurrava a paleta para fora da vista. */}
-            <div className="flex shrink-0 gap-1 rounded-lg bg-app-surface-2 p-1">
+            <div className="flex shrink-0 gap-1 rounded-lg bg-app-surface-2 p-1 lg:mr-3">
               {(
                 [
                   { chave: "telas", rotulo: "Telas", Icone: Layers },
@@ -196,12 +196,17 @@ function EditorLayout({ funnelId, leadUsage }: { funnelId: string; leadUsage: Le
               ))}
             </div>
 
+            {/* O padding direito precisa estar DENTRO de quem rola, nunca no
+                próprio elemento com `overflow-y-auto` — senão a barra de
+                rolagem fica inset por esse padding, com um vão até a borda. */}
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {abaEsquerda === "telas" ? (
-                <StepsPanel onTelaSelecionada={fecharGaveta} />
-              ) : (
-                <Palette onBlocoAdicionado={fecharGaveta} />
-              )}
+              <div className="lg:pr-3">
+                {abaEsquerda === "telas" ? (
+                  <StepsPanel onTelaSelecionada={fecharGaveta} />
+                ) : (
+                  <Palette onBlocoAdicionado={fecharGaveta} />
+                )}
+              </div>
             </div>
           </PainelLateral>
 
@@ -299,7 +304,11 @@ function PainelLateral({
           // Desktop: volta a ser coluna no fluxo normal.
           "lg:static lg:z-auto lg:flex lg:max-h-none lg:w-64 lg:rounded-none lg:border-t-0 lg:p-3",
           lado === "esquerda"
-            ? "lg:shrink-0 lg:border-r lg:border-app-border"
+            // `pr-0`: a barra de rolagem de quem tem `overflow-y-auto` lá
+            // dentro precisa encostar na borda direita do painel, não flutuar
+            // a `p-3` de distância dela — o padding direito volta a entrar no
+            // conteúdo mesmo, não no painel.
+            ? "lg:shrink-0 lg:border-r lg:border-app-border lg:pr-0"
             : "lg:w-72 lg:shrink-0 lg:gap-0 lg:border-l lg:border-app-border lg:p-0",
         )}
       >

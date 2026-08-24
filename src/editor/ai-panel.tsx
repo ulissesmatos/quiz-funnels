@@ -65,10 +65,18 @@ export function AiPanel({
   // Modo cuidadoso: persiste entre mensagens (não é um flag de disparo único)
   // até a pessoa desligar de propósito.
   const [capricho, setCapricho] = useState(false);
+  const [reconectando, setReconectando] = useState(false);
 
   /** Chamadas já aplicadas, por `toolCallId`. */
   const aplicadas = useRef(new Set<string>());
   const fimDaLista = useRef<HTMLDivElement>(null);
+  const listaRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  /**
+   * Gruda no fim da lista enquanto a pessoa não rolar pra cima de propósito.
+   * `ref`, não estado: mudar a cada frame de scroll não deve re-renderizar.
+   */
+  const coladoNoFim = useRef(true);
   /** Texto do último auto-envio disparado, pra não duplicar em StrictMode. */
   const autoEnviado = useRef<string | null>(null);
   /**
@@ -157,9 +165,67 @@ export function AiPanel({
     }
   }, [messages, store]);
 
+  // Só rola sozinho até o fim se a pessoa já estava lá — senão, rolar pra
+  // cima pra reler algo é impossível durante o streaming, porque cada token
+  // novo dispara este efeito e puxa a tela de volta pro fim.
   useEffect(() => {
-    fimDaLista.current?.scrollIntoView({ behavior: "smooth" });
+    if (coladoNoFim.current) fimDaLista.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  function aoRolarLista() {
+    const el = listaRef.current;
+    if (!el) return;
+    const distanciaDoFim = el.scrollHeight - el.scrollTop - el.clientHeight;
+    coladoNoFim.current = distanciaDoFim < 96;
+  }
+
+  // Textarea que cresce com o conteúdo até um teto, depois passa a rolar por
+  // dentro — sem isto, um prompt de várias linhas ficava cortado dentro de
+  // uma caixa de altura fixa.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [texto]);
+
+  /**
+   * Detecta quando o copiloto trava no meio de uma resposta (conexão caiu, o
+   * provider parou de mandar tokens) e tenta de novo sozinho antes de incomodar
+   * quem está usando. `messages` muda a cada pedaço novo do stream — se ficar
+   * `TIMEOUT_SEM_ATIVIDADE_MS` sem nenhuma mudança enquanto `ocupado` for
+   * verdadeiro, não veio nada nesse intervalo: trata como travado.
+   *
+   * `reconectando` só é zerado no próximo `enviar()` (não aqui dentro, pra não
+   * chamar `setState` direto no corpo do efeito) — como o rótulo some da tela
+   * assim que `ocupado` volta a `false`, deixar o valor antigo parado até lá
+   * não é visível.
+   */
+  const tentativas = useRef(0);
+  useEffect(() => {
+    if (!ocupado) {
+      tentativas.current = 0;
+      return;
+    }
+
+    const TIMEOUT_SEM_ATIVIDADE_MS = 25_000;
+    const MAX_TENTATIVAS = 2;
+
+    const temporizador = setTimeout(() => {
+      if (tentativas.current < MAX_TENTATIVAS) {
+        tentativas.current += 1;
+        setReconectando(true);
+        stop();
+        void regenerate();
+      } else {
+        stop();
+        setErroLocal("O copiloto parou de responder depois de algumas tentativas. Tente de novo.");
+      }
+    }, TIMEOUT_SEM_ATIVIDADE_MS);
+
+    return () => clearTimeout(temporizador);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, ocupado]);
 
   async function enviar(textoForcado?: string) {
     if (enviando.current) return;
@@ -168,8 +234,11 @@ export function AiPanel({
 
     enviando.current = true;
     setErroLocal(null);
+    setReconectando(false);
     clearError();
     setTexto("");
+    coladoNoFim.current = true;
+    tentativas.current = 0;
 
     // O servidor monta o contexto lendo o rascunho do banco. Salvar antes evita
     // que ele trabalhe sobre uma versão anterior à que está na tela.
@@ -219,7 +288,7 @@ export function AiPanel({
         )}
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+      <div ref={listaRef} onScroll={aoRolarLista} className="min-h-0 flex-1 overflow-y-auto p-3">
         {messages.length === 0 ? (
           <div className="flex flex-col gap-3">
             <p className="text-sm leading-relaxed text-app-muted">
@@ -256,7 +325,9 @@ export function AiPanel({
         {aguardandoResposta && (
           <div className="mt-3 flex items-center gap-2 text-sm">
             <Sparkles size={13} className="shrink-0 animate-pulse text-app-accent" />
-            <ShimmerText>{capricho ? "Planejando com calma…" : "Pensando…"}</ShimmerText>
+            <ShimmerText>
+              {reconectando ? "Reconectando…" : capricho ? "Planejando com calma…" : "Pensando…"}
+            </ShimmerText>
           </div>
         )}
 
@@ -281,24 +352,6 @@ export function AiPanel({
 
       {/* `relative` ancora o popup de pergunta, que abre por cima do campo. */}
       <div className="relative shrink-0 border-t border-app-border p-2.5">
-        <div className="mb-1.5 flex items-center px-0.5">
-          <button
-            type="button"
-            onClick={() => setCapricho((atual) => !atual)}
-            aria-pressed={capricho}
-            title="Modo cuidadoso: planeja tudo antes de construir e pensa mais — demora mais, erra menos"
-            className={cn(
-              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors duration-150 ease-app",
-              capricho
-                ? "border-app-accent bg-app-accent/15 text-app-accent"
-                : "border-app-border text-app-muted hover:text-app-text",
-            )}
-          >
-            <Brain size={12} />
-            Capricho
-          </button>
-        </div>
-
         {perguntaPendente && (
           <PopupDePergunta
             pergunta={perguntaPendente.input}
@@ -312,8 +365,12 @@ export function AiPanel({
           />
         )}
 
-        <div className="flex items-end gap-1.5 rounded-xl border border-app-border bg-app-surface-2 p-1.5 transition-colors focus-within:border-app-primary/60">
+        {/* Uma caixa só — textarea em cima, barra de ações embaixo — em vez de
+            duas bordas empilhadas (o Capricho vivia fora daqui). É também
+            onde entram anexo/microfone no futuro, ao lado do Capricho. */}
+        <div className="rounded-xl border border-app-border bg-app-surface-2 transition-colors focus-within:border-app-primary/60">
           <textarea
+            ref={textareaRef}
             value={texto}
             onChange={(e) => setTexto(e.target.value)}
             onKeyDown={(e) => {
@@ -322,24 +379,42 @@ export function AiPanel({
                 void enviar();
               }
             }}
-            rows={2}
+            rows={1}
             placeholder="O que você quer construir?"
             aria-label="Mensagem para o copiloto"
-            className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-1.5 py-1 text-sm outline-none placeholder:text-app-muted"
+            className="max-h-40 min-h-10 w-full resize-none bg-transparent px-3 pt-2.5 pb-1 text-sm outline-none placeholder:text-app-muted"
           />
 
-          <button
-            type="button"
-            aria-label={ocupado ? "Parar" : "Enviar"}
-            onClick={() => (ocupado ? stop() : void enviar())}
-            disabled={!ocupado && !texto.trim()}
-            className={cn(
-              "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
-              "bg-app-primary text-white hover:bg-app-primary-hover disabled:opacity-30",
-            )}
-          >
-            {ocupado ? <Square size={13} /> : <ArrowUp size={15} />}
-          </button>
+          <div className="flex items-center justify-between gap-1.5 px-2 pb-2">
+            <button
+              type="button"
+              onClick={() => setCapricho((atual) => !atual)}
+              aria-pressed={capricho}
+              title="Modo cuidadoso: planeja tudo antes de construir e pensa mais — demora mais, erra menos"
+              className={cn(
+                "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors duration-150 ease-app",
+                capricho
+                  ? "border-app-accent bg-app-accent/15 text-app-accent"
+                  : "border-app-border text-app-muted hover:text-app-text",
+              )}
+            >
+              <Brain size={12} />
+              Capricho
+            </button>
+
+            <button
+              type="button"
+              aria-label={ocupado ? "Parar" : "Enviar"}
+              onClick={() => (ocupado ? stop() : void enviar())}
+              disabled={!ocupado && !texto.trim()}
+              className={cn(
+                "grid h-8 w-8 shrink-0 place-items-center rounded-lg transition-colors",
+                "bg-app-primary text-white hover:bg-app-primary-hover disabled:opacity-30",
+              )}
+            >
+              {ocupado ? <Square size={13} /> : <ArrowUp size={15} />}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -473,7 +548,7 @@ function Mensagem({ message }: { message: { role: string; parts: { type: string 
       .join("");
 
     return (
-      <p className="ml-6 self-end rounded-xl rounded-br-sm bg-app-primary/15 px-3 py-2 text-sm whitespace-pre-wrap">
+      <p className="ml-6 self-end rounded-xl rounded-br-sm bg-app-primary/15 px-3 py-2 text-sm break-words whitespace-pre-wrap">
         {texto}
       </p>
     );
