@@ -10,9 +10,12 @@ type AuditAction =
   | "impersonate_stop"
   | "subscription_override"
   | "promote_super_admin"
-  | "demote_super_admin";
+  | "demote_super_admin"
+  | "plan_create"
+  | "plan_update"
+  | "plan_delete";
 
-type AuditTarget = { type: "organization" | "user"; id: string };
+type AuditTarget = { type: "organization" | "user" | "plan"; id: string };
 
 export async function logAdminAction(
   actorUserId: string,
@@ -34,7 +37,7 @@ export const AUDIT_LOGS_PAGE_SIZE = 30;
 export type AuditLogRow = {
   id: string;
   action: AuditAction;
-  targetType: "organization" | "user";
+  targetType: "organization" | "user" | "plan";
   targetId: string;
   metadata: Record<string, unknown>;
   createdAt: Date;

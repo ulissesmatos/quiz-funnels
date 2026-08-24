@@ -52,6 +52,14 @@ const schema = z.object({
    */
   MERCADOPAGO_PLATFORM_ACCESS_TOKEN: z.string().optional(),
   MERCADOPAGO_PLATFORM_WEBHOOK_SECRET: z.string().optional(),
+
+  /**
+   * Alternativa à assinatura via Mercado Pago — mesma cobrança da plataforma
+   * (organizações pagando o SaaS), conta Stripe do próprio Ulisses. Checkout
+   * hospedado (Stripe Checkout Session), sem Stripe.js no cliente.
+   */
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
 });
 
 let cached: z.infer<typeof schema> | null = null;

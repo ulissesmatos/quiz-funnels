@@ -1,5 +1,6 @@
 "use client";
 
+import { Card } from "@/components/ui/card";
 import type { StepDropoff } from "@/server/analytics/queries";
 
 import { AiExplainButton } from "./ai-explain-button";
@@ -25,15 +26,15 @@ export function DropoffTab({
     <div className="flex flex-col gap-4">
       {!hasEnoughData && <LowSampleNote />}
 
-      <div className="rounded-2xl border border-app-border bg-app-surface p-4">
+      <Card padding="sm">
         <h2 className="mb-3 text-sm font-medium text-app-text">Sessões por etapa</h2>
         <DropoffChart data={dropoff} />
-      </div>
+      </Card>
 
       {maiorQueda && maiorQueda.dropoffPct > 0 && (
         <p className="rounded-lg border border-app-border bg-app-surface-2 px-3 py-2 text-xs text-app-muted">
           Maior queda: <span className="text-app-text">{maiorQueda.stepName}</span> perde{" "}
-          {Math.round(maiorQueda.dropoffPct * 100)}% de quem chegou até ali.
+          <span className="tabular-nums">{Math.round(maiorQueda.dropoffPct * 100)}%</span> de quem chegou até ali.
         </p>
       )}
 

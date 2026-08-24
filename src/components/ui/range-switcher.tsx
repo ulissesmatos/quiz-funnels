@@ -41,7 +41,7 @@ export function RangeSwitcher({
             key={key}
             href={`?${params.toString()}`}
             className={cn(
-              "rounded-md px-2.5 py-1.5 text-xs transition-colors",
+              "rounded-md px-2.5 py-1.5 text-xs transition-colors duration-150 ease-app",
               current === key ? "bg-app-surface-2 text-app-text" : "text-app-muted hover:text-app-text",
             )}
           >

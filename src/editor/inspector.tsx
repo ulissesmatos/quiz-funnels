@@ -44,11 +44,15 @@ export function Inspector({
             type="button"
             onClick={() => onAbaChange(chave)}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs transition-colors",
+              "flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs transition-colors duration-150 ease-app",
               aba === chave
-                ? "bg-app-surface-2 text-app-text"
+                ? chave === "ia"
+                  ? "bg-app-accent/15 text-app-accent"
+                  : "bg-app-surface-2 text-app-text"
                 : "text-app-muted hover:text-app-text",
-              chave === "ia" && aba !== "ia" && "text-app-primary",
+              // Assinatura do copiloto: o "IA" fica levemente aceso mesmo
+              // fora de foco, pra sinalizar que é diferente das outras abas.
+              chave === "ia" && aba !== "ia" && "text-app-accent",
             )}
           >
             {chave === "ia" && <Sparkles size={12} />}

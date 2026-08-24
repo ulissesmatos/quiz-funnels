@@ -42,7 +42,7 @@ export function ThemeModeForm({ inicial }: { inicial: ThemeMode }) {
             disabled={pending}
             onClick={() => escolher(valor)}
             className={cn(
-              "rounded-lg border px-3 py-2.5 text-sm transition-colors disabled:opacity-60",
+              "rounded-lg border px-3 py-2.5 text-sm transition-colors duration-150 ease-app disabled:opacity-60",
               modo === valor
                 ? "border-app-primary text-app-text"
                 : "border-app-border text-app-muted hover:border-app-primary/60 hover:text-app-text",

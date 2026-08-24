@@ -1,12 +1,9 @@
-"use client";
-
-import { useState, useTransition } from "react";
+import Link from "next/link";
 
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { formatarDataCompleta } from "@/lib/format";
-import { startSubscriptionCheckoutAction } from "@/server/billing/actions";
 
 const RÓTULO_STATUS: Record<string, { texto: string; tone: BadgeProps["tone"] }> = {
   trialing: { texto: "Em teste", tone: "neutral" },
@@ -15,40 +12,34 @@ const RÓTULO_STATUS: Record<string, { texto: string; tone: BadgeProps["tone"] }
   canceled: { texto: "Cancelada", tone: "danger" },
 };
 
+/**
+ * Resumo compacto — trocar de plano, mudar de forma de pagamento ou ver os
+ * três planos lado a lado é tudo em `/configuracoes/planos`, não aqui.
+ */
 export function BillingSection({
+  planName,
+  priceLabel,
   status,
   trialEndsAt,
   currentPeriodEnd,
-  priceLabel,
 }: {
+  planName: string | null;
+  priceLabel: string | null;
   status: "trialing" | "active" | "past_due" | "canceled" | null;
   trialEndsAt: Date | null;
   currentPeriodEnd: Date | null;
-  priceLabel: string;
 }) {
-  const [pending, startTransition] = useTransition();
-  const [erro, setErro] = useState<string | null>(null);
-
   const rótulo = status ? RÓTULO_STATUS[status] : null;
-  const bloqueado = status === "past_due" || status === "canceled";
-
-  function assinar() {
-    setErro(null);
-    startTransition(async () => {
-      const result = await startSubscriptionCheckoutAction();
-      if (!result.ok) {
-        setErro(result.error);
-        return;
-      }
-      window.location.href = result.initPoint;
-    });
-  }
 
   return (
     <Card>
       <CardHeader
         title="Assinatura"
-        description={`Plano único, ${priceLabel}/mês. Em atraso, a edição dos seus funis fica bloqueada — o que já está publicado continua no ar normalmente.`}
+        description={
+          planName && priceLabel
+            ? `Plano ${planName}, ${priceLabel}/mês. Em atraso, a edição dos seus funis fica bloqueada — o que já está publicado continua no ar normalmente.`
+            : "Nenhum plano associado a esta organização ainda."
+        }
       />
 
       <div className="flex flex-wrap items-center gap-3">
@@ -68,12 +59,10 @@ export function BillingSection({
         )}
       </div>
 
-      {erro && <p className="mt-3 text-xs text-app-danger">{erro}</p>}
-
       <div className="mt-4">
-        <Button size="sm" onClick={assinar} loading={pending}>
-          {bloqueado ? "Atualizar pagamento" : status === "active" ? "Trocar cartão" : "Assinar agora"}
-        </Button>
+        <Link href="/configuracoes/planos">
+          <Button size="sm">Ver planos</Button>
+        </Link>
       </div>
     </Card>
   );

@@ -14,7 +14,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Logo } from "@/components/brand/logo";
-import { PLAN } from "@/server/billing/plan";
+import { cn } from "@/lib/cn";
+import type { Plan } from "@/server/db/schema";
 
 import { MarketingImage } from "./marketing-image";
 import { SiteHeader } from "./site-header";
@@ -105,28 +106,32 @@ const FAQ = [
   },
 ];
 
-export function LandingPage({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
+export function LandingPage({ isLoggedIn = false, planos }: { isLoggedIn?: boolean; planos: Plan[] }) {
+  // Trial exibido no Hero/CTA final é o do plano em destaque — é nele que o
+  // cadastro entra por padrão, mesmo que a pessoa esteja olhando outro card.
+  const planoDestaque = planos.find((p) => p.featured) ?? planos[0] ?? null;
+
   return (
     <div className="bg-white text-marketing-ink">
       <SiteHeader isLoggedIn={isLoggedIn} />
       <main>
-        <Hero />
+        <Hero trialDays={planoDestaque?.trialDays ?? 7} />
         <Recursos />
         <ComoFunciona />
         <CopilotoSpotlight />
         <CheckoutSpotlight />
-        <Precos />
+        <Precos planos={planos} />
         <Faq />
-        <CtaFinal />
+        <CtaFinal trialDays={planoDestaque?.trialDays ?? 7} />
       </main>
       <SiteFooter />
     </div>
   );
 }
 
-function Hero() {
+function Hero({ trialDays }: { trialDays: number }) {
   return (
-    <section className="relative isolate overflow-hidden bg-[radial-gradient(circle_at_84%_40%,#dbe7ff_0,transparent_28%),radial-gradient(circle_at_15%_90%,#eff4ff_0,transparent_25%)]">
+    <section className="border-b border-marketing-border bg-white">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 pt-14 pb-16 md:grid-cols-2 md:px-8 md:pt-20 md:pb-24">
         <div>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[#ccdafa] bg-[#f3f7ff] px-3 py-1 text-xs font-medium text-marketing-blue">
@@ -134,7 +139,7 @@ function Hero() {
             Copiloto de IA incluso
           </span>
 
-          <h1 className="mt-5 text-4xl leading-[1.06] font-bold tracking-[-0.045em] md:text-5xl">
+          <h1 className="mt-5 font-serif text-4xl leading-[1.08] font-semibold tracking-[-0.02em] md:text-5xl">
             Página parada não vende. Funil que faz perguntas, sim.
           </h1>
 
@@ -146,19 +151,19 @@ function Hero() {
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link
               href="/cadastro"
-              className="rounded-lg bg-marketing-blue px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-marketing-blue/25 transition-transform hover:-translate-y-0.5 hover:bg-[#2455d6]"
+              className="rounded-lg bg-marketing-blue px-5 py-3 text-sm font-semibold text-white transition-colors duration-150 ease-app hover:bg-[#2455d6]"
             >
               Criar funil grátis
             </Link>
             <a
               href="#como-funciona"
-              className="rounded-lg border border-marketing-border bg-white px-5 py-3 text-sm font-semibold text-marketing-ink transition-colors hover:border-[#b9c9ef] hover:bg-[#f7f9ff]"
+              className="rounded-lg border border-marketing-border bg-white px-5 py-3 text-sm font-semibold text-marketing-ink transition-colors duration-150 ease-app hover:border-[#b9c9ef] hover:bg-[#f7f9ff]"
             >
               Ver como funciona
             </a>
           </div>
 
-          <p className="mt-4 text-xs text-marketing-muted">{PLAN.trialDays} dias grátis · cancele quando quiser</p>
+          <p className="mt-4 text-xs text-marketing-muted">{trialDays} dias grátis · cancele quando quiser</p>
         </div>
 
         <ProductVisual
@@ -184,7 +189,11 @@ function Recursos() {
 
         <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {RECURSOS.map(({ Icone, titulo, descricao, accent }) => (
-            <div key={titulo} className="rounded-2xl border border-marketing-border bg-white p-6 shadow-sm shadow-[#0b1633]/5 transition-transform hover:-translate-y-1">
+            <div
+              key={titulo}
+              className="rounded-2xl border border-marketing-border bg-white p-6 transition-colors duration-150 ease-app hover:border-marketing-blue/30"
+            >
+
               <div className={`grid h-10 w-10 place-items-center rounded-lg ${accent}`}>
                 <Icone size={20} />
               </div>
@@ -235,8 +244,13 @@ function CopilotoSpotlight() {
           <ProductVisual file="copiloto" alt="Copiloto de IA aberto no editor do FunilQuiz" label="Copiloto de IA" stat="Descreva. Ele monta." className="md:order-2" />
 
           <div className="md:order-1">
-            <span className="text-xs font-semibold tracking-wide text-marketing-blue uppercase">Copiloto de IA</span>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight">Um copiloto que constrói, não só responde</h2>
+            {/* Único lugar da landing com o lima do copiloto — a mesma cor que
+                marca a IA dentro do editor, só aqui, pra não diluir o sinal. */}
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-app-accent/30 bg-app-accent/15 px-2.5 py-1 text-xs font-semibold text-marketing-ink">
+              <Sparkles size={12} className="text-app-accent" />
+              Copiloto de IA
+            </span>
+            <h2 className="mt-3 font-serif text-3xl font-semibold tracking-tight">Um copiloto que constrói, não só responde</h2>
             <p className="mt-4 leading-relaxed text-marketing-muted">
               Descreva seu produto e o objetivo do funil. O copiloto monta as telas, escreve as perguntas, configura
               a pontuação e já deixa o checkout pronto — explicando cada decisão antes de aplicar.
@@ -261,7 +275,7 @@ function CheckoutSpotlight() {
       <div className="grid items-center gap-12 md:grid-cols-2">
         <div>
           <span className="text-xs font-semibold tracking-wide text-[#cbdcff] uppercase">Checkout integrado</span>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight">Venda sem sair do funil</h2>
+          <h2 className="mt-2 font-serif text-3xl font-semibold tracking-tight">Venda sem sair do funil</h2>
           <p className="mt-4 leading-relaxed text-[#dbe6ff]">
             Pix, cartão e boleto processados pelo Mercado Pago, com order bump antes do pagamento e upsell de um
             clique depois — sem redirecionar o visitante pra outra página.
@@ -281,39 +295,73 @@ function CheckoutSpotlight() {
   );
 }
 
-function Precos() {
-  const preco = (PLAN.priceCents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+function Precos({ planos }: { planos: Plan[] }) {
+  if (planos.length === 0) return null;
 
   return (
-    <section id="preco" className="border-t border-marketing-border bg-white">
+    <section id="preco" className="border-t border-marketing-border bg-marketing-paper">
       <div className="mx-auto max-w-6xl px-4 py-16 md:px-8 md:py-24">
-        <SectionHeading eyebrow="Preço" titulo="Um plano, sem pegadinha" descricao="Sem taxa por venda, sem limite artificial de funil pra te empurrar pro plano de cima." />
+        <SectionHeading
+          eyebrow="Preço"
+          titulo="Um plano pra cada tamanho de operação"
+          descricao="Sem taxa por venda em nenhum deles. Comece o teste grátis e troque de plano quando quiser, direto no painel."
+        />
 
-        <div className="mx-auto mt-12 max-w-sm rounded-2xl border border-[#c9d8ff] bg-white p-8 shadow-2xl shadow-marketing-blue/10">
-          <h3 className="font-semibold">{PLAN.name}</h3>
-          <p className="mt-2 flex items-baseline gap-1">
-            <span className="text-4xl font-bold">R$ {preco}</span>
-            <span className="text-marketing-muted">/mês</span>
-          </p>
-          <p className="mt-1 text-sm text-marketing-muted">{PLAN.trialDays} dias grátis pra testar</p>
-
-          <Link
-            href="/cadastro"
-            className="mt-6 block rounded-lg bg-marketing-blue px-4 py-3 text-center text-sm font-semibold text-white shadow-lg shadow-marketing-blue/25 transition-transform hover:-translate-y-0.5 hover:bg-[#2455d6]"
-          >
-            Começar teste grátis
-          </Link>
-
-          <ul className="mt-6 flex flex-col gap-2.5 text-sm">
-            <ChecklistItem>Funis ilimitados</ChecklistItem>
-            <ChecklistItem>Copiloto de IA em todas as telas</ChecklistItem>
-            <ChecklistItem>Checkout, order bump e upsell integrados</ChecklistItem>
-            <ChecklistItem>Domínio próprio, sem marca d&apos;água</ChecklistItem>
-            <ChecklistItem>Equipe multiusuário e webhooks</ChecklistItem>
-          </ul>
+        <div className={cn("mx-auto mt-12 grid gap-5", planos.length === 1 ? "max-w-sm" : "sm:grid-cols-2 lg:grid-cols-3")}>
+          {planos.map((plano) => (
+            <PlanoCard key={plano.id} plano={plano} />
+          ))}
         </div>
       </div>
     </section>
+  );
+}
+
+function PlanoCard({ plano }: { plano: Plan }) {
+  const preco = (plano.monthlyPriceCents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col rounded-2xl border bg-white p-8 shadow-xl shadow-black/5",
+        plano.featured ? "border-marketing-blue" : "border-marketing-border",
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <h3 className="font-semibold">{plano.name}</h3>
+        {plano.featured && (
+          <span className="rounded-full bg-marketing-blue/10 px-2 py-0.5 text-[11px] font-semibold text-marketing-blue">
+            Recomendado
+          </span>
+        )}
+      </div>
+      {plano.description && <p className="mt-1 text-sm text-marketing-muted">{plano.description}</p>}
+
+      <p className="mt-3 flex items-baseline gap-1">
+        <span className="font-mono text-4xl font-bold tabular-nums">R$ {preco}</span>
+        <span className="text-marketing-muted">/mês</span>
+      </p>
+      <p className="mt-1 text-sm text-marketing-muted">{plano.trialDays} dias grátis pra testar</p>
+
+      <Link
+        href="/cadastro"
+        className="mt-6 block rounded-lg bg-marketing-blue px-4 py-3 text-center text-sm font-semibold text-white transition-colors duration-150 ease-app hover:bg-[#2455d6]"
+      >
+        Começar teste grátis
+      </Link>
+
+      <ul className="mt-6 flex flex-1 flex-col gap-2.5 text-sm">
+        <ChecklistItem>{plano.maxFunnels ? `Até ${plano.maxFunnels} funis` : "Funis ilimitados"}</ChecklistItem>
+        <ChecklistItem>
+          {plano.maxLeadsPerFunnel ? `Até ${plano.maxLeadsPerFunnel} leads por funil` : "Leads ilimitados por funil"}
+        </ChecklistItem>
+        <ChecklistItem>Copiloto de IA em todas as telas</ChecklistItem>
+        <ChecklistItem>Checkout, order bump e upsell integrados</ChecklistItem>
+        <ChecklistItem>Domínio próprio, sem marca d&apos;água</ChecklistItem>
+        {plano.canUseTeam && <ChecklistItem>Equipe multiusuário</ChecklistItem>}
+        {plano.canUseWebhooks && <ChecklistItem>Webhooks</ChecklistItem>}
+      </ul>
+    </div>
   );
 }
 
@@ -328,7 +376,7 @@ function Faq() {
             <summary className="cursor-pointer list-none font-medium marker:content-none">
               <span className="flex items-center justify-between gap-4">
                 {pergunta}
-                <span className="text-marketing-muted transition-transform group-open:rotate-45">+</span>
+                <span className="text-marketing-muted transition-transform duration-150 ease-app group-open:rotate-45">+</span>
               </span>
             </summary>
             <p className="mt-2 text-sm leading-relaxed text-marketing-muted">{resposta}</p>
@@ -339,18 +387,20 @@ function Faq() {
   );
 }
 
-function CtaFinal() {
+function CtaFinal({ trialDays }: { trialDays: number }) {
   return (
-    <section className="border-t border-[#2557d4] bg-[linear-gradient(135deg,#2454d5,#316cec)]">
+    <section className="border-t border-[#2557d4] bg-marketing-blue">
       <div className="mx-auto max-w-6xl px-4 py-16 text-center md:px-8 md:py-24">
-        <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Seu próximo funil pode estar no ar hoje</h2>
+        <h2 className="font-serif text-3xl font-semibold tracking-tight md:text-4xl">
+          Seu próximo funil pode estar no ar hoje
+        </h2>
         <p className="mx-auto mt-3 max-w-md text-[#dbe6ff]">
-          {PLAN.trialDays} dias grátis, sem compromisso. Descreva o que você vende e deixe o copiloto montar o
+          {trialDays} dias grátis, sem compromisso. Descreva o que você vende e deixe o copiloto montar o
           primeiro rascunho.
         </p>
         <Link
           href="/cadastro"
-          className="mt-7 inline-block rounded-lg bg-white px-6 py-3.5 text-sm font-semibold text-marketing-blue shadow-xl shadow-black/20 transition-transform hover:-translate-y-0.5"
+          className="mt-7 inline-block rounded-lg bg-white px-6 py-3.5 text-sm font-semibold text-marketing-blue transition-colors duration-150 ease-app hover:bg-[#eef2ff]"
         >
           Criar funil grátis
         </Link>
@@ -377,7 +427,7 @@ function SectionHeading({ eyebrow, titulo, descricao }: { eyebrow: string; titul
   return (
     <div className="mx-auto max-w-2xl text-center">
       <span className="text-xs font-semibold tracking-wide text-marketing-blue uppercase">{eyebrow}</span>
-      <h2 className="mt-2 text-3xl font-bold tracking-tight">{titulo}</h2>
+      <h2 className="mt-2 font-serif text-3xl font-semibold tracking-tight">{titulo}</h2>
       {descricao && <p className="mt-3 leading-relaxed text-marketing-muted">{descricao}</p>}
     </div>
   );

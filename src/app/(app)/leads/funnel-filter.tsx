@@ -11,8 +11,15 @@ export function FunnelFilter({ funnels, current }: { funnels: { id: string; name
 
   function onChange(value: string) {
     const params = new URLSearchParams(searchParams);
-    if (value) params.set("funil", value);
-    else params.delete("funil");
+    if (value) {
+      params.set("funil", value);
+      params.delete("todos");
+    } else {
+      // "Todos os funis" aqui é a visão combinada explícita — sem isto, tirar
+      // o filtro voltaria pro seletor em vez de mostrar a tabela misturada.
+      params.delete("funil");
+      params.set("todos", "1");
+    }
     params.delete("page"); // trocar o filtro reinicia a paginação
 
     router.push(`?${params.toString()}`);

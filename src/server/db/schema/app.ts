@@ -39,6 +39,12 @@ export const funnels = pgTable(
       .notNull(),
     /** Aponta para a versão que o público está vendo agora. */
     publishedVersionId: uuid("published_version_id"),
+    /**
+     * Setado quando o SISTEMA despublicou por este funil ter batido o
+     * limite de leads do plano — distingue de quando a própria pessoa
+     * despublicou de propósito. Zerado no próximo publish manual bem-sucedido.
+     */
+    autoUnpublishedAt: timestamp("auto_unpublished_at"),
     createdBy: text("created_by").references(() => user.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -221,14 +227,49 @@ export const coupons = pgTable(
 );
 
 /**
+ * Plano de assinatura da plataforma — nome, preço, trial e limites de uso,
+ * tudo editável pelo painel `/admin/planos`. Sem `organizationId`: é a
+ * primeira tabela global do app, compartilhada por todas as organizações.
+ *
+ * `active = false` tira o plano da vitrine de checkout sem quebrar quem já
+ * assina nele — excluir de verdade só é permitido (checado na action, não
+ * aqui) quando não sobra assinante nenhum.
+ */
+export const plans = pgTable("plans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  description: text("description"),
+  monthlyPriceCents: integer("monthly_price_cents").notNull(),
+  currency: text("currency").default("BRL").notNull(),
+  trialDays: integer("trial_days").default(7).notNull(),
+  /** `null` = sem teto. */
+  maxFunnels: integer("max_funnels"),
+  /** `null` = sem teto. Contagem vitalícia por funil, não por período. */
+  maxLeadsPerFunnel: integer("max_leads_per_funnel"),
+  canUseTeam: boolean("can_use_team").default(false).notNull(),
+  canUseWebhooks: boolean("can_use_webhooks").default(false).notNull(),
+  /** Só um plano deveria ter isto ligado por vez — `setFeaturedPlanAction` garante isso. */
+  featured: boolean("featured").default(false).notNull(),
+  active: boolean("active").default(true).notNull(),
+  /** Criado sob demanda no primeiro checkout Stripe deste plano — não exige configurar nada manualmente no dashboard Stripe. */
+  stripeProductId: text("stripe_product_id"),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/**
  * Assinatura da própria organização com o SaaS (nós cobrando o cliente, não o
  * cliente cobrando o dele — isso é `orders`). Uma linha por organização,
  * criada em `trialing` no instante em que a org nasce (ver
  * `server/auth/organization.ts` e o hook `afterCreateOrganization`).
  *
- * A cobrança recorrente usa a conta Mercado Pago da PLATAFORMA
- * (`MERCADOPAGO_PLATFORM_ACCESS_TOKEN`), nunca a conta conectada de um
- * cliente — são dois contextos de pagamento completamente separados.
+ * Duas formas de pagar, `provider` diz qual: a recorrente por cartão (MP
+ * `PreApproval` ou Stripe `Subscription`) usa a conta da PLATAFORMA em
+ * cada provedor, nunca a conta conectada de um cliente (`mercadoPagoConnections`)
+ * — são contextos de pagamento completamente separados. `provider`/
+ * `billingCycle` ficam nulos até o primeiro checkout ser concluído.
  */
 export const organizationSubscriptions = pgTable("organization_subscriptions", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -236,14 +277,26 @@ export const organizationSubscriptions = pgTable("organization_subscriptions", {
     .notNull()
     .unique()
     .references(() => organization.id, { onDelete: "cascade" }),
+  planId: uuid("plan_id").references(() => plans.id),
   status: text("status", { enum: ["trialing", "active", "past_due", "canceled"] })
     .default("trialing")
     .notNull(),
   trialEndsAt: timestamp("trial_ends_at"),
+  /**
+   * Quando a assinatura recorrente cobra de novo, OU quando expira uma
+   * assinatura anual paga à vista (Pix, sem renovação automática — sem
+   * infra de cron neste app, `isSubscriptionUsable` compara este valor
+   * contra `now()` na leitura em vez de depender de um job que atualize
+   * `status` fisicamente).
+   */
   currentPeriodEnd: timestamp("current_period_end"),
+  provider: text("provider", { enum: ["mercadopago", "stripe"] }),
+  billingCycle: text("billing_cycle", { enum: ["monthly", "annual"] }),
   /** Id da assinatura (`PreApproval`) na conta da plataforma na Mercado Pago. */
   mpPreapprovalId: text("mp_preapproval_id"),
   mpPayerEmail: text("mp_payer_email"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  stripeCustomerId: text("stripe_customer_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -318,9 +371,12 @@ export const adminAuditLogs = pgTable(
         "subscription_override",
         "promote_super_admin",
         "demote_super_admin",
+        "plan_create",
+        "plan_update",
+        "plan_delete",
       ],
     }).notNull(),
-    targetType: text("target_type", { enum: ["organization", "user"] }).notNull(),
+    targetType: text("target_type", { enum: ["organization", "user", "plan"] }).notNull(),
     targetId: text("target_id").notNull(),
     metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -482,6 +538,8 @@ export type MercadoPagoConnection = typeof mercadoPagoConnections.$inferSelect;
 export type Order = typeof orders.$inferSelect;
 export type Coupon = typeof coupons.$inferSelect;
 export type OrganizationSubscription = typeof organizationSubscriptions.$inferSelect;
+export type Plan = typeof plans.$inferSelect;
+export type NewPlan = typeof plans.$inferInsert;
 export type ErrorLog = typeof errorLogs.$inferSelect;
 export type ImpersonationLog = typeof impersonationLogs.$inferSelect;
 export type AdminAuditLog = typeof adminAuditLogs.$inferSelect;

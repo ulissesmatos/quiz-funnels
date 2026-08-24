@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 
 import { EditorShell } from "@/editor/editor-shell";
 import { parseFunnelDocument } from "@/funnel/schema";
+import { getPlanLimits } from "@/server/billing/plans";
 import { requireOrganization } from "@/server/auth/session";
-import { getFunnelForOrganization } from "@/server/funnels/queries";
+import { countLeadsForFunnel, getFunnelForOrganization } from "@/server/funnels/queries";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -29,5 +30,18 @@ export default async function EditorPage({ params }: PageProps) {
   const parsed = parseFunnelDocument(funnel.document);
   if (!parsed.success) notFound();
 
-  return <EditorShell funnelId={funnel.id} document={parsed.data} />;
+  const limits = await getPlanLimits(organization.id);
+  const leadCount = limits?.maxLeadsPerFunnel != null ? await countLeadsForFunnel(funnel.id) : 0;
+
+  return (
+    <EditorShell
+      funnelId={funnel.id}
+      document={parsed.data}
+      leadUsage={{
+        count: leadCount,
+        limit: limits?.maxLeadsPerFunnel ?? null,
+        autoUnpublishedAt: funnel.autoUnpublishedAt,
+      }}
+    />
+  );
 }

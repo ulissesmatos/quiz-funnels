@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { PageShell } from "@/components/ui/page-shell";
 import { requireOrganization } from "@/server/auth/session";
 
 import { AcceptInvitation } from "./accept-invitation";
@@ -21,8 +22,8 @@ export default async function ConvitePage({ params }: PageProps) {
   await requireOrganization();
 
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-16 md:px-8">
+    <PageShell width="sm" className="max-w-md py-16">
       <AcceptInvitation invitationId={id} />
-    </div>
+    </PageShell>
   );
 }

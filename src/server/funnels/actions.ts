@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, count, eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -9,16 +9,32 @@ import { createEmptyFunnel, describeParseError, parseFunnelDocument } from "@/fu
 import { slugify } from "@/lib/slug";
 import { requireOrganization } from "@/server/auth/session";
 import { getOrganizationSubscription, isEditingBlocked } from "@/server/billing/queries";
+import { getPlanLimits } from "@/server/billing/plans";
 import { db } from "@/server/db";
-import { funnels, funnelVersions } from "@/server/db/schema";
+import { funnels, funnelVersions, responseSessions } from "@/server/db/schema";
 import type { ActionResult } from "@/server/shared/action-result";
 import { getOrganizationSettings } from "@/server/settings/queries";
 
 const MENSAGEM_ASSINATURA_PENDENTE =
   "Assinatura pendente — regularize o pagamento em Configurações para voltar a editar. O que já está publicado continua no ar normalmente.";
 
-export async function createFunnelAction(formData: FormData) {
+export async function createFunnelAction(formData: FormData): Promise<ActionResult> {
   const { session, organization } = await requireOrganization();
+
+  const limits = await getPlanLimits(organization.id);
+  if (limits?.maxFunnels !== null && limits?.maxFunnels !== undefined) {
+    const [{ total }] = await db
+      .select({ total: count() })
+      .from(funnels)
+      .where(eq(funnels.organizationId, organization.id));
+
+    if (total >= limits.maxFunnels) {
+      return {
+        ok: false,
+        error: `Seu plano permite até ${limits.maxFunnels} ${limits.maxFunnels === 1 ? "funil" : "funis"} — exclua um funil existente ou faça upgrade em Configurações.`,
+      };
+    }
+  }
 
   const name = String(formData.get("name") ?? "").trim() || "Funil sem título";
   const slug = await findAvailableSlug(organization.id, slugify(name) || "funil");
@@ -110,6 +126,21 @@ export async function publishFunnelAction(funnelId: string): Promise<ActionResul
     };
   }
 
+  const limits = await getPlanLimits(organization.id);
+  if (limits?.maxLeadsPerFunnel !== null && limits?.maxLeadsPerFunnel !== undefined) {
+    const [{ total: leadCount }] = await db
+      .select({ total: count() })
+      .from(responseSessions)
+      .where(eq(responseSessions.funnelId, funnelId));
+
+    if (leadCount >= limits.maxLeadsPerFunnel) {
+      return {
+        ok: false,
+        error: `Este funil já chegou ao limite de ${limits.maxLeadsPerFunnel} leads do seu plano — faça upgrade em Configurações para publicar de novo.`,
+      };
+    }
+  }
+
   await db.transaction(async (tx) => {
     const [{ nextVersion }] = await tx
       .select({
@@ -130,7 +161,16 @@ export async function publishFunnelAction(funnelId: string): Promise<ActionResul
 
     await tx
       .update(funnels)
-      .set({ publishedVersionId: version.id, status: "published", updatedAt: new Date() })
+      // `autoUnpublishedAt` zera aqui: se o sistema tinha despublicado por
+      // limite de leads, republicar com sucesso (só possível depois de
+      // upgrade, já que a checagem acima bloqueia enquanto o limite continuar
+      // estourado) encerra o aviso.
+      .set({
+        publishedVersionId: version.id,
+        status: "published",
+        autoUnpublishedAt: null,
+        updatedAt: new Date(),
+      })
       .where(eq(funnels.id, funnelId));
   });
 

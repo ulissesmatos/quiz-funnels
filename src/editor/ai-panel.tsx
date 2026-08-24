@@ -207,12 +207,12 @@ export function AiPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <header className="flex shrink-0 items-center gap-2 border-b border-app-border px-3 py-2.5">
-        <span className="grid h-6 w-6 place-items-center rounded-md bg-app-primary/15 text-app-primary">
+        <span className="grid h-6 w-6 place-items-center rounded-md bg-app-accent/15 text-app-accent">
           <Sparkles size={13} />
         </span>
         <h2 className="text-sm font-medium">Copiloto</h2>
         {capricho && (
-          <span className="ml-auto flex items-center gap-1 rounded-full bg-app-primary/15 px-2 py-0.5 text-[10px] font-medium text-app-primary">
+          <span className="ml-auto flex items-center gap-1 rounded-full bg-app-accent/15 px-2 py-0.5 text-[10px] font-medium text-app-accent">
             <Brain size={10} />
             Capricho
           </span>
@@ -233,9 +233,9 @@ export function AiPanel({
                   // Envia direto: antes só preenchia o campo, e era preciso um
                   // segundo clique no botão de enviar pra nada acontecer no meio.
                   onClick={() => void enviar(sugestao)}
-                  className="group flex items-start gap-2 rounded-lg border border-app-border px-3 py-2.5 text-left text-xs leading-snug text-app-muted transition-colors hover:border-app-primary/60 hover:bg-app-surface-2 hover:text-app-text"
+                  className="group flex items-start gap-2 rounded-lg border border-app-border px-3 py-2.5 text-left text-xs leading-snug text-app-muted transition-colors duration-150 ease-app hover:border-app-accent/60 hover:bg-app-surface-2 hover:text-app-text"
                 >
-                  <Sparkles size={12} className="mt-0.5 shrink-0 text-app-primary/70" />
+                  <Sparkles size={12} className="mt-0.5 shrink-0 text-app-accent/80" />
                   <span className="flex-1">{sugestao}</span>
                   <ChevronRight
                     size={13}
@@ -255,7 +255,7 @@ export function AiPanel({
 
         {aguardandoResposta && (
           <div className="mt-3 flex items-center gap-2 text-sm">
-            <Sparkles size={13} className="shrink-0 animate-pulse text-app-primary" />
+            <Sparkles size={13} className="shrink-0 animate-pulse text-app-accent" />
             <ShimmerText>{capricho ? "Planejando com calma…" : "Pensando…"}</ShimmerText>
           </div>
         )}
@@ -288,9 +288,9 @@ export function AiPanel({
             aria-pressed={capricho}
             title="Modo cuidadoso: planeja tudo antes de construir e pensa mais — demora mais, erra menos"
             className={cn(
-              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors",
+              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors duration-150 ease-app",
               capricho
-                ? "border-app-primary bg-app-primary/15 text-app-primary"
+                ? "border-app-accent bg-app-accent/15 text-app-accent"
                 : "border-app-border text-app-muted hover:text-app-text",
             )}
           >
@@ -410,9 +410,9 @@ function PopupDePergunta({
   const permiteTexto = pergunta.allowFreeText !== false;
 
   return (
-    <div className="absolute right-2.5 bottom-full left-2.5 z-10 mb-2 rounded-xl border border-app-primary/60 bg-app-surface p-3 shadow-app-lg">
+    <div className="absolute right-2.5 bottom-full left-2.5 z-10 mb-2 rounded-xl border border-app-accent/60 bg-app-surface p-3 shadow-app-lg">
       <div className="mb-2.5 flex items-start gap-2">
-        <MessageCircleQuestionMark size={14} className="mt-0.5 shrink-0 text-app-primary" />
+        <MessageCircleQuestionMark size={14} className="mt-0.5 shrink-0 text-app-accent" />
         <div className="text-sm leading-snug">
           <ChatMarkdown text={pergunta.question} />
         </div>
@@ -424,7 +424,7 @@ function PopupDePergunta({
             key={opcao}
             type="button"
             onClick={() => onResponder(opcao)}
-            className="rounded-full border border-app-border bg-app-surface-2 px-3 py-1.5 text-xs transition-colors hover:border-app-primary hover:bg-app-primary/10 hover:text-app-text"
+            className="rounded-full border border-app-border bg-app-surface-2 px-3 py-1.5 text-xs transition-colors duration-150 ease-app hover:border-app-accent hover:bg-app-accent/10 hover:text-app-text"
           >
             {opcao}
           </button>
@@ -527,7 +527,7 @@ function Mensagem({ message }: { message: { role: string; parts: { type: string 
                   falhou
                     ? "text-app-danger"
                     : rodando
-                      ? "text-app-primary"
+                      ? "text-app-accent"
                       : "text-app-success",
                 )}
               >

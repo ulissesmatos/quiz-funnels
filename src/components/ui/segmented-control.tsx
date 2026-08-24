@@ -34,7 +34,7 @@ export function SegmentedControl<T extends string>({
   className?: string;
 }) {
   const item = cn(
-    "rounded-md transition-colors",
+    "rounded-md transition-colors duration-150 ease-app",
     size === "sm" ? "px-2.5 py-1.5 text-xs" : "px-3 py-1.5 text-sm",
   );
 

@@ -6,9 +6,6 @@ import { cn } from "@/lib/cn";
  * Superfície padrão do shell. Substitui as ~23 repetições de
  * `rounded-2xl border border-app-border bg-app-surface p-*` espalhadas pelas
  * páginas — a razão de cada uma ter divergido um pouco da outra.
- *
- * Server-safe de propósito: todo `page.tsx` de `(app)` é server component e não
- * deveria precisar cruzar a fronteira de cliente só pra desenhar uma caixa.
  */
 const PADDING = {
   none: "",
@@ -32,7 +29,7 @@ export function Card({
       className={cn(
         "rounded-2xl border border-app-border bg-app-surface",
         PADDING[padding],
-        interactive && "transition-colors hover:border-app-primary/50",
+        interactive && "transition-colors duration-150 ease-app hover:border-app-primary/50",
         className,
       )}
       {...props}
@@ -55,8 +52,8 @@ export function CardHeader({
   return (
     <div className={cn("mb-4 flex items-start justify-between gap-3", className)}>
       <div className="min-w-0">
-        <h2 className="font-medium text-app-text">{title}</h2>
-        {description && <p className="mt-0.5 text-sm text-app-muted">{description}</p>}
+        <h2 className="font-semibold tracking-tight text-app-text">{title}</h2>
+        {description && <p className="mt-1 text-sm leading-relaxed text-app-muted">{description}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>

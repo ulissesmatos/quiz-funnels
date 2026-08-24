@@ -76,7 +76,7 @@ function HeaderCta({ isLoggedIn }: { isLoggedIn: boolean }) {
     return (
       <Link
         href="/funis"
-        className="rounded-lg bg-marketing-blue px-3.5 py-2 text-sm font-medium text-white shadow-lg shadow-marketing-blue/20 transition-transform hover:-translate-y-0.5 hover:bg-[#2455d6]"
+        className="rounded-lg bg-marketing-blue px-3.5 py-2 text-sm font-medium text-white transition-colors duration-150 ease-app hover:bg-[#2455d6]"
       >
         Ir para o painel
       </Link>
@@ -93,7 +93,7 @@ function HeaderCta({ isLoggedIn }: { isLoggedIn: boolean }) {
       </Link>
       <Link
         href="/cadastro"
-        className="rounded-lg bg-marketing-blue px-3.5 py-2 text-sm font-medium text-white shadow-lg shadow-marketing-blue/20 transition-transform hover:-translate-y-0.5 hover:bg-[#2455d6]"
+        className="rounded-lg bg-marketing-blue px-3.5 py-2 text-sm font-medium text-white transition-colors duration-150 ease-app hover:bg-[#2455d6]"
       >
         Criar funil grátis
       </Link>

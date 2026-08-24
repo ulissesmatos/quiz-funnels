@@ -57,6 +57,13 @@
       "when": 1786967039489,
       "tag": "0007_brave_ghost_rider",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787528462489,
+      "tag": "0008_worthless_jasper_sitwell",
+      "breakpoints": true
     }
   ]
 }

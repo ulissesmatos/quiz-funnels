@@ -1,5 +1,6 @@
 "use client";
 
+import { Card } from "@/components/ui/card";
 import type { TrafficSourceBreakdown } from "@/server/analytics/queries";
 import { TRAFFIC_SOURCE_LABELS } from "@/server/analytics/traffic-source";
 
@@ -26,10 +27,10 @@ export function TrafficTab({
     <div className="flex flex-col gap-4">
       {!hasEnoughData && <LowSampleNote />}
 
-      <div className="rounded-2xl border border-app-border bg-app-surface p-4">
+      <Card padding="sm">
         <h2 className="mb-3 text-sm font-medium text-app-text">De onde vieram os visitantes</h2>
         <TrafficSourceBars data={traffic} />
-      </div>
+      </Card>
 
       {hasEnoughData && (
         <AiExplainButton

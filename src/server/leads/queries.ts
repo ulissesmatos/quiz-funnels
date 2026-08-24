@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { funnels, responseSessions } from "@/server/db/schema";
@@ -8,6 +8,41 @@ import { funnels, responseSessions } from "@/server/db/schema";
 import { since, type RangeKey } from "../analytics/queries";
 
 export const LEADS_PAGE_SIZE = 25;
+
+export type FunnelLeadSummary = {
+  funnelId: string;
+  funnelName: string;
+  total: number;
+  lastLeadAt: Date;
+};
+
+/**
+ * Quantos leads cada funil capturou no período — a tela inicial de Leads
+ * mostra isto como um seletor, em vez de já abrir com as respostas de todos os
+ * funis misturadas numa tabela só (perguntas diferentes por funil, coluna
+ * "Respostas" virava uma sopa de chaves sem relação entre si).
+ */
+export async function listFunnelLeadSummaries(
+  organizationId: string,
+  range: RangeKey,
+): Promise<FunnelLeadSummary[]> {
+  const where = and(eq(funnels.organizationId, organizationId), since(responseSessions.createdAt, diasDoRange(range)));
+
+  const rows = await db
+    .select({
+      funnelId: responseSessions.funnelId,
+      funnelName: funnels.name,
+      total: count(),
+      lastLeadAt: sql<Date>`max(${responseSessions.createdAt})`,
+    })
+    .from(responseSessions)
+    .innerJoin(funnels, eq(responseSessions.funnelId, funnels.id))
+    .where(where)
+    .groupBy(responseSessions.funnelId, funnels.name)
+    .orderBy(desc(sql`max(${responseSessions.createdAt})`));
+
+  return rows;
+}
 
 export type LeadContato = { nome?: string; email?: string; telefone?: string };
 

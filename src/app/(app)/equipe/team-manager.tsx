@@ -44,10 +44,13 @@ export function TeamManager({
   currentUserId,
   currentRole,
   organizationId,
+  canUseTeam,
 }: {
   currentUserId: string;
   currentRole: string;
   organizationId: string;
+  /** Feature do plano da organização — sem ela, nem quem pode gerenciar vê o formulário de convite. */
+  canUseTeam: boolean;
 }) {
   const [membros, setMembros] = useState<Membro[] | null>(null);
   const [convites, setConvites] = useState<Convite[] | null>(null);
@@ -85,7 +88,14 @@ export function TeamManager({
 
   return (
     <div className="flex flex-col gap-6">
-      {podeGerenciar && <ConvidarForm organizationId={organizationId} onConvidado={recarregar} />}
+      {podeGerenciar &&
+        (canUseTeam ? (
+          <ConvidarForm organizationId={organizationId} onConvidado={recarregar} />
+        ) : (
+          <Alert tone="warning">
+            Seu plano atual não inclui convite de equipe — faça upgrade em Configurações para adicionar mais gente.
+          </Alert>
+        ))}
 
       {erro && <Alert tone="danger">{erro}</Alert>}
 

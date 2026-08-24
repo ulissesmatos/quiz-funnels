@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { PageHeader, PageShell } from "@/components/ui/page-shell";
+import { getPlanLimits } from "@/server/billing/plans";
 import { requireOrganization } from "@/server/auth/session";
 
 import { TeamManager } from "./team-manager";
@@ -9,6 +10,7 @@ export const metadata: Metadata = { title: "Equipe" };
 
 export default async function EquipePage() {
   const { session, organization } = await requireOrganization();
+  const limits = await getPlanLimits(organization.id);
 
   return (
     <PageShell width="sm">
@@ -25,6 +27,7 @@ export default async function EquipePage() {
         currentUserId={session.user.id}
         currentRole={organization.role}
         organizationId={organization.id}
+        canUseTeam={limits?.canUseTeam ?? false}
       />
     </PageShell>
   );

@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { getPlanLimits } from "@/server/billing/plans";
 import { requireOrganization } from "@/server/auth/session";
 import { db } from "@/server/db";
 import { funnels, webhookSubscriptions } from "@/server/db/schema";
@@ -22,6 +23,11 @@ export type CreateWebhookResult = { ok: true; secret: string } | { ok: false; er
  */
 export async function createWebhookAction(url: string, funnelId: string | null): Promise<CreateWebhookResult> {
   const { session, organization } = await requireOrganization();
+
+  const limits = await getPlanLimits(organization.id);
+  if (!limits?.canUseWebhooks) {
+    return { ok: false, error: "Seu plano atual não inclui webhooks — faça upgrade em Configurações." };
+  }
 
   const parsedUrl = UrlSchema.safeParse(url);
   if (!parsedUrl.success) return { ok: false, error: parsedUrl.error.issues[0].message };

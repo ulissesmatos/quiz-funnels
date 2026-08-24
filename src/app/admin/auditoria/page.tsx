@@ -15,9 +15,12 @@ const RÓTULO_AÇÃO: Record<string, string> = {
   subscription_override: "Ajustou assinatura",
   promote_super_admin: "Promoveu a super admin",
   demote_super_admin: "Removeu super admin",
+  plan_create: "Criou plano",
+  plan_update: "Editou plano",
+  plan_delete: "Excluiu plano",
 };
 
-const RÓTULO_ALVO: Record<string, string> = { organization: "organização", user: "usuário" };
+const RÓTULO_ALVO: Record<string, string> = { organization: "organização", user: "usuário", plan: "plano" };
 
 type PageProps = { searchParams: Promise<{ page?: string }> };
 

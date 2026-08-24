@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
  * (ligar/desligar cupom e webhook) — ali o elemento precisa ser `<button>`, não
  * um `<span>` com `onClick`.
  */
-const badgeStyles = cva("inline-flex items-center gap-1 rounded-full font-medium whitespace-nowrap", {
+const badgeStyles = cva("inline-flex items-center gap-1.5 rounded-full font-medium whitespace-nowrap", {
   variants: {
     tone: {
       neutral: "bg-app-surface-2 text-app-muted",
@@ -20,6 +20,8 @@ const badgeStyles = cva("inline-flex items-center gap-1 rounded-full font-medium
       danger: "bg-app-danger/15 text-app-danger",
       warning: "bg-app-warning/15 text-app-warning",
       brand: "bg-app-primary/15 text-app-primary",
+      /** Assinatura do copiloto de IA — reservado a esse contexto e a tags "Novo". */
+      ai: "bg-app-accent/15 text-app-accent",
     },
     size: {
       sm: "px-2 py-0.5 text-xs",
@@ -29,10 +31,28 @@ const badgeStyles = cva("inline-flex items-center gap-1 rounded-full font-medium
   defaultVariants: { tone: "neutral", size: "sm" },
 });
 
-export type BadgeProps = ComponentProps<"span"> & VariantProps<typeof badgeStyles>;
+const DOT_COLOR: Record<NonNullable<VariantProps<typeof badgeStyles>["tone"]>, string> = {
+  neutral: "bg-app-muted",
+  success: "bg-app-success",
+  danger: "bg-app-danger",
+  warning: "bg-app-warning",
+  brand: "bg-app-primary",
+  ai: "bg-app-accent",
+};
 
-export function Badge({ tone, size, className, ...props }: BadgeProps) {
-  return <span className={cn(badgeStyles({ tone, size }), className)} {...props} />;
+export type BadgeProps = ComponentProps<"span"> &
+  VariantProps<typeof badgeStyles> & {
+    /** Ponto colorido antes do texto — o indicador de "publicado/rascunho" etc. */
+    dot?: boolean;
+  };
+
+export function Badge({ tone = "neutral", size, dot = false, className, children, ...props }: BadgeProps) {
+  return (
+    <span className={cn(badgeStyles({ tone, size }), className)} {...props}>
+      {dot && <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", DOT_COLOR[tone ?? "neutral"])} />}
+      {children}
+    </span>
+  );
 }
 
 export { badgeStyles };

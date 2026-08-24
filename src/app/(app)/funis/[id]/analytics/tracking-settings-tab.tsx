@@ -4,6 +4,7 @@ import { Check, Loader2, UploadCloud } from "lucide-react";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/field";
 import type { FunnelPixels } from "@/funnel/schema";
 import { updateFunnelPixelsAction } from "@/server/analytics/actions";
@@ -56,7 +57,7 @@ export function TrackingSettingsTab({ funnelId, pixels }: { funnelId: string; pi
   }
 
   return (
-    <div className="max-w-lg rounded-2xl border border-app-border bg-app-surface p-4">
+    <Card padding="sm" className="max-w-lg">
       <h2 className="text-sm font-medium text-app-text">Pixel e tags de conversão</h2>
       <p className="mt-1 text-xs text-app-muted">
         Vale só para este funil. Salvar altera o rascunho — publique para valer no ar.
@@ -144,6 +145,6 @@ export function TrackingSettingsTab({ funnelId, pixels }: { funnelId: string; pi
       </div>
 
       {publishError && <p className="mt-2 whitespace-pre-line text-xs text-app-danger">{publishError}</p>}
-    </div>
+    </Card>
   );
 }

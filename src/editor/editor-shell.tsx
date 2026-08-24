@@ -31,21 +31,32 @@ import { Topbar } from "./topbar";
 type PainelMobile = "canvas" | "estrutura" | "ajustes";
 export type Vista = "construtor" | "fluxo";
 
+/** Uso de leads deste funil contra o limite do plano da organização — exibido no Topbar. */
+export type LeadUsage = {
+  count: number;
+  /** `null` = plano sem teto de leads; o aviso nunca aparece. */
+  limit: number | null;
+  /** Setado quando o SISTEMA despublicou este funil por ter batido o limite. */
+  autoUnpublishedAt: Date | null;
+};
+
 export function EditorShell({
   funnelId,
   document,
+  leadUsage,
 }: {
   funnelId: string;
   document: FunnelDocument;
+  leadUsage: LeadUsage;
 }) {
   return (
     <EditorProvider funnelId={funnelId} document={document}>
-      <EditorLayout funnelId={funnelId} />
+      <EditorLayout funnelId={funnelId} leadUsage={leadUsage} />
     </EditorProvider>
   );
 }
 
-function EditorLayout({ funnelId }: { funnelId: string }) {
+function EditorLayout({ funnelId, leadUsage }: { funnelId: string; leadUsage: LeadUsage }) {
   const store = useEditorStore();
   useEditorShortcuts();
 
@@ -144,7 +155,7 @@ function EditorLayout({ funnelId }: { funnelId: string }) {
       modifiers={arrastando?.startsWith(PALETTE_PREFIX) ? [] : [restrictToVerticalAxis]}
     >
       <div className="flex h-dvh flex-col overflow-hidden">
-        <Topbar funnelId={funnelId} vista={vista} onVistaChange={setVista} />
+        <Topbar funnelId={funnelId} vista={vista} onVistaChange={setVista} leadUsage={leadUsage} />
 
         <div className="relative flex min-h-0 flex-1">
           {/*

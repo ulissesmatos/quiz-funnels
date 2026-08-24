@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { authClient } from "@/lib/auth-client";
 
 type DetalheDoConvite = {
@@ -71,17 +72,17 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
 
   if (erro) {
     return (
-      <div className="rounded-2xl border border-app-border bg-app-surface p-5 text-center">
+      <Card className="text-center">
         <p className="text-sm text-app-danger">{erro}</p>
-      </div>
+      </Card>
     );
   }
 
   if (resultado === "recusado") {
     return (
-      <div className="rounded-2xl border border-app-border bg-app-surface p-5 text-center">
+      <Card className="text-center">
         <p className="text-sm text-app-muted">Convite recusado.</p>
-      </div>
+      </Card>
     );
   }
 
@@ -94,8 +95,8 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
   }
 
   return (
-    <div className="rounded-2xl border border-app-border bg-app-surface p-5 text-center">
-      <h1 className="text-lg font-semibold">Convite para {convite.organizationName ?? "uma organização"}</h1>
+    <Card className="text-center">
+      <h1 className="font-serif text-lg font-semibold">Convite para {convite.organizationName ?? "uma organização"}</h1>
       <p className="mt-1 text-sm text-app-muted">
         Você foi convidado como <strong className="text-app-text">{RÓTULOS_DE_PAPEL[convite.role ?? "member"] ?? convite.role}</strong>.
       </p>
@@ -108,7 +109,7 @@ export function AcceptInvitation({ invitationId }: { invitationId: string }) {
           {processando ? <Loader2 size={14} className="animate-spin" /> : "Aceitar convite"}
         </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 

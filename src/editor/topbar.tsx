@@ -25,16 +25,18 @@ import { cn } from "@/lib/cn";
 import { publishFunnelAction } from "@/server/funnels/actions";
 
 import { useDocument, useEditor } from "./editor-context";
-import type { Vista } from "./editor-shell";
+import type { LeadUsage, Vista } from "./editor-shell";
 
 export function Topbar({
   funnelId,
   vista,
   onVistaChange,
+  leadUsage,
 }: {
   funnelId: string;
   vista: Vista;
   onVistaChange: (vista: Vista) => void;
+  leadUsage: LeadUsage;
 }) {
   const doc = useDocument();
   const saveStatus = useEditor((s) => s.saveStatus);
@@ -55,6 +57,11 @@ export function Topbar({
   const [erroPublicacao, setErroPublicacao] = useState<string | null>(null);
   const [publicadoAgora, setPublicadoAgora] = useState(false);
 
+  // "Quase no limite" só antes de bater — depois disso o funil já foi
+  // despublicado sozinho e o aviso vira o de `autoUnpublishedAt` abaixo.
+  const pertoDoLimiteDeLeads =
+    leadUsage.limit !== null && leadUsage.count < leadUsage.limit && leadUsage.count >= leadUsage.limit * 0.9;
+
   function publicar() {
     setErroPublicacao(null);
     iniciarPublicacao(async () => {
@@ -69,7 +76,32 @@ export function Topbar({
   }
 
   return (
-    <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-app-border bg-app-surface px-3 py-2">
+    <>
+      {/* Mesmo padrão de faixa full-bleed do banner de assinatura pendente em
+          `(app)/layout.tsx` — não o componente `Alert` (pensado pra caixa
+          arredondada dentro de conteúdo, não pra topo de tela). */}
+      {leadUsage.autoUnpublishedAt ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-app-border bg-app-danger/15 px-4 py-2 text-sm text-app-danger">
+          <span>
+            Este funil foi despublicado automaticamente por atingir o limite de leads do seu plano.{" "}
+            <Link href="/configuracoes/planos" className="font-medium underline underline-offset-2">
+              Fazer upgrade
+            </Link>{" "}
+            para publicar de novo.
+          </span>
+        </div>
+      ) : (
+        pertoDoLimiteDeLeads && (
+          <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-app-border bg-app-warning/15 px-4 py-2 text-sm text-app-warning">
+            <span>
+              Este funil já usou {leadUsage.count} de {leadUsage.limit} leads do seu plano — perto do limite. Ao
+              estourar, ele é despublicado automaticamente.
+            </span>
+          </div>
+        )
+      )}
+
+      <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-app-border bg-app-surface px-3 py-2">
       <Link
         href="/funis"
         className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-app-muted hover:bg-app-surface-2 hover:text-app-text"
@@ -190,7 +222,8 @@ export function Topbar({
           {erroPublicacao}
         </p>
       )}
-    </header>
+      </header>
+    </>
   );
 }
 

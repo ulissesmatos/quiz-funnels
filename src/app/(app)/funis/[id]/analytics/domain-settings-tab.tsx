@@ -1,10 +1,13 @@
 "use client";
 
-import { Check, Loader2, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { useState, useTransition } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/field";
+import { CodeChip } from "@/components/ui/misc";
 import { cn } from "@/lib/cn";
 import { addFunnelDomainAction, removeFunnelDomainAction, verifyFunnelDomainAction } from "@/server/domains/actions";
 import type { FunnelDomainListItem } from "@/server/domains/queries";
@@ -21,12 +24,11 @@ export function DomainSettingsTab({
   const [domains, setDomains] = useState(domainsIniciais);
 
   return (
-    <div className="max-w-lg rounded-2xl border border-app-border bg-app-surface p-4">
+    <Card padding="sm" className="max-w-lg">
       <h2 className="text-sm font-medium text-app-text">Domínio personalizado</h2>
       <p className="mt-1 text-xs text-app-muted">
-        Sirva este funil no seu próprio domínio, em vez de{" "}
-        <code className="rounded bg-app-surface-2 px-1 py-0.5">{appHostname}/f/...</code>. Precisa provar que o
-        domínio é seu antes de qualquer coisa ir ao ar nele.
+        Sirva este funil no seu próprio domínio, em vez de <CodeChip>{appHostname}/f/...</CodeChip>. Precisa provar
+        que o domínio é seu antes de qualquer coisa ir ao ar nele.
       </p>
 
       <div className="mt-4 flex flex-col gap-3">
@@ -48,7 +50,7 @@ export function DomainSettingsTab({
         funnelId={funnelId}
         onAdicionado={(domain) => setDomains((atual) => [...atual, domain])}
       />
-    </div>
+    </Card>
   );
 }
 
@@ -135,11 +137,13 @@ function DomainRow({
         <div className="flex items-center gap-1.5">
           <span className="text-sm text-app-text">{domain.hostname}</span>
           {verificado ? (
-            <span className="flex items-center gap-1 rounded-full bg-app-success/15 px-2 py-0.5 text-xs text-app-success">
-              <Check size={11} /> Verificado
-            </span>
+            <Badge tone="success" dot>
+              Verificado
+            </Badge>
           ) : (
-            <span className="rounded-full bg-app-surface-2 px-2 py-0.5 text-xs text-app-muted">Pendente</span>
+            <Badge tone="neutral" dot>
+              Pendente
+            </Badge>
           )}
         </div>
 
@@ -158,16 +162,13 @@ function DomainRow({
         <div className="mt-2 rounded-lg bg-app-surface-2 p-2.5 text-xs">
           <p className="text-app-muted">
             1. Crie um registro <strong className="text-app-text">TXT</strong> em{" "}
-            <code className="rounded bg-app-surface px-1 py-0.5">_funis-challenge.{domain.hostname}</code> com o
-            valor:
+            <CodeChip>_funis-challenge.{domain.hostname}</CodeChip> com o valor:
           </p>
-          <code className="mt-1 block truncate rounded bg-app-surface px-2 py-1 text-app-text">
-            {domain.verificationToken}
-          </code>
+          <CodeChip className="mt-1 block truncate">{domain.verificationToken}</CodeChip>
           <p className="mt-2 text-app-muted">
             2. Aponte um registro <strong className="text-app-text">CNAME</strong> de {domain.hostname} para{" "}
-            <code className="rounded bg-app-surface px-1 py-0.5">{appHostname}</code>. HTTPS depende do proxy
-            usado no seu servidor — este passo só confirma a posse do domínio.
+            <CodeChip>{appHostname}</CodeChip>. HTTPS depende do proxy usado no seu servidor — este passo só
+            confirma a posse do domínio.
           </p>
           <Button size="sm" variant="outline" className="mt-2" onClick={verificar} disabled={verificando}>
             {verificando ? <Loader2 size={12} className="animate-spin" /> : "Verificar agora"}

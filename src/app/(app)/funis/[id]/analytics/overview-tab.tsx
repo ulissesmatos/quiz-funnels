@@ -1,5 +1,6 @@
 "use client";
 
+import { Card } from "@/components/ui/card";
 import type { FunnelOverview, TrendPoint } from "@/server/analytics/queries";
 
 import { AiExplainButton } from "./ai-explain-button";
@@ -45,10 +46,10 @@ export function OverviewTab({
         <KpiCard label="Cliques no CTA" value={String(overview.ctaClicks)} hint={pct(overview.ctaClickRate)} />
       </div>
 
-      <div className="rounded-2xl border border-app-border bg-app-surface p-4">
+      <Card padding="sm">
         <h2 className="mb-3 text-sm font-medium text-app-text">Visualizações e conclusões</h2>
         <TrendChart data={trend} />
-      </div>
+      </Card>
 
       {hasEnoughData && (
         <AiExplainButton

@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import type { Viewport } from "next";
 import type { ReactNode } from "react";
 
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { siteUrl } from "@/lib/site";
 
+import { fraunces, instrumentSans, jetbrainsMono } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -42,8 +44,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR">
-      <body>{children}</body>
+    <html
+      lang="pt-BR"
+      className={`${instrumentSans.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}
+    >
+      <body>
+        <TooltipProvider delayDuration={200}>{children}</TooltipProvider>
+      </body>
     </html>
   );
 }

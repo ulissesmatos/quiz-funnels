@@ -45,7 +45,7 @@ export function CopyButton({
       type="button"
       onClick={copiar}
       className={cn(
-        "flex shrink-0 items-center gap-1 rounded-md border border-app-border px-2 py-1 text-xs text-app-muted transition-colors hover:border-app-primary/60 hover:text-app-text",
+        "flex shrink-0 items-center gap-1 rounded-md border border-app-border px-2 py-1 text-xs text-app-muted transition-colors duration-150 ease-app hover:border-app-primary/60 hover:text-app-text",
         className,
       )}
     >

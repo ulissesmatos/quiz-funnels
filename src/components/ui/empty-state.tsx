@@ -32,7 +32,7 @@ export function EmptyState({
           {icon}
         </div>
       )}
-      <p className="font-medium text-app-text">{title}</p>
+      <p className="font-serif text-xl text-app-text">{title}</p>
       {description && <p className="mt-1 max-w-sm text-sm text-app-muted">{description}</p>}
       {action && <div className="mt-5">{action}</div>}
     </div>

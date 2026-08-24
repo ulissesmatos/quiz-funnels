@@ -21,8 +21,20 @@ export async function getOrganizationSubscription(organizationId: string) {
  * do dono da conta não deve derrubar a venda que já está rodando pro cliente
  * dele). `trialing` e `active` sempre podem editar; sem linha de assinatura
  * (não deveria acontecer, mas não é motivo pra travar) também pode.
+ *
+ * Exceção dentro de `active`: quando `currentPeriodEnd` já passou, trata como
+ * bloqueada mesmo sem o status ter sido atualizado. Cobre a assinatura anual
+ * paga por Pix (pagamento único, sem renovação automática) — como este app
+ * não tem infraestrutura de cron, não existe quem "expire" a linha fisicamente
+ * quando a data chega; o vencimento é comparado aqui, na leitura.
  */
-export function isEditingBlocked(subscription: { status: string } | null): boolean {
+export function isEditingBlocked(
+  subscription: { status: string; currentPeriodEnd: Date | null } | null,
+): boolean {
   if (!subscription) return false;
-  return subscription.status === "past_due" || subscription.status === "canceled";
+  if (subscription.status === "past_due" || subscription.status === "canceled") return true;
+  if (subscription.status === "active" && subscription.currentPeriodEnd !== null) {
+    return subscription.currentPeriodEnd.getTime() < Date.now();
+  }
+  return false;
 }

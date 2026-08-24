@@ -8,6 +8,8 @@ import { type ComponentProps, type ReactNode, useCallback, useState } from "reac
 
 import { cn } from "@/lib/cn";
 
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
+
 export type SidebarNavItem = {
   href: string;
   label: string;
@@ -136,7 +138,7 @@ export function SidebarNav({
     // `min-height: auto` por padrão e não cede abaixo do conteúdo, então sem
     // isso a rolagem nunca aparece e o rodapé de conta é empurrado pra fora do
     // sidebar de altura fixa.
-    <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
+    <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-x-hidden overflow-y-auto">
       {items.map((item) => (
         <NavRow
           key={item.href}
@@ -167,32 +169,54 @@ function NavRow({
   const [open, setOpen] = useState(false);
   const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
   const rowClass = cn(
-    "group/row relative flex items-center gap-2 rounded-lg py-2 text-sm transition-colors",
+    "relative flex items-center gap-2 rounded-lg py-2 text-sm transition-all duration-150 ease-app",
     depth === 0 ? "px-3" : "px-3 ml-4",
     collapsed && depth === 0 && "md:mx-auto md:w-9 md:justify-center md:px-0",
-    active ? "bg-app-surface-2 text-app-text" : "text-app-muted hover:bg-app-surface-2 hover:text-app-text",
+    active
+      // Barra de acento à esquerda + tinta da marca: o item ativo passa a ser
+      // reconhecível de relance, não só "um cinza um pouco diferente".
+      ? "bg-app-primary/10 font-medium text-app-text before:absolute before:top-1/2 before:left-0 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-r-full before:bg-app-primary"
+      : "text-app-muted hover:bg-app-surface-2 hover:text-app-text",
   );
 
   const showTooltip = collapsed && depth === 0;
 
   if (!item.items?.length) {
-    return (
+    const link = (
       <Link href={item.href} onClick={onNavigate} className={rowClass}>
-        {item.icon}
+        <span className={cn("shrink-0 transition-colors", active && "text-app-primary")}>{item.icon}</span>
         <span className={showTooltip ? "md:hidden" : undefined}>{item.label}</span>
-        {showTooltip && <SidebarTooltip>{item.label}</SidebarTooltip>}
       </Link>
+    );
+
+    if (!showTooltip) return link;
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{link}</TooltipTrigger>
+        <TooltipContent side="right">{item.label}</TooltipContent>
+      </Tooltip>
     );
   }
 
+  const gatilho = (
+    <button type="button" onClick={() => setOpen((v) => !v)} className={cn(rowClass, "w-full")}>
+      {item.icon}
+      <span className={cn("flex-1 text-left", showTooltip && "md:hidden")}>{item.label}</span>
+      <ChevronDown size={14} className={cn("transition-transform", open && "rotate-180", showTooltip && "md:hidden")} />
+    </button>
+  );
+
   return (
     <div>
-      <button type="button" onClick={() => setOpen((v) => !v)} className={cn(rowClass, "w-full")}>
-        {item.icon}
-        <span className={cn("flex-1 text-left", showTooltip && "md:hidden")}>{item.label}</span>
-        <ChevronDown size={14} className={cn("transition-transform", open && "rotate-180", showTooltip && "md:hidden")} />
-        {showTooltip && <SidebarTooltip>{item.label}</SidebarTooltip>}
-      </button>
+      {showTooltip ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{gatilho}</TooltipTrigger>
+          <TooltipContent side="right">{item.label}</TooltipContent>
+        </Tooltip>
+      ) : (
+        gatilho
+      )}
       {open && (
         <div className="flex flex-col gap-1">
           {item.items.map((child) => (
@@ -208,14 +232,5 @@ function NavRow({
         </div>
       )}
     </div>
-  );
-}
-
-/** Tooltip só-CSS (sem dependência nova): aparece à direita ao passar o mouse, só quando o sidebar está recolhido. */
-function SidebarTooltip({ children }: { children: ReactNode }) {
-  return (
-    <span className="pointer-events-none invisible absolute top-1/2 left-full z-50 ml-2 -translate-y-1/2 rounded-md border border-app-border bg-app-surface-2 px-2 py-1 text-xs whitespace-nowrap text-app-text opacity-0 shadow-lg transition-opacity md:group-hover/row:visible md:group-hover/row:opacity-100">
-      {children}
-    </span>
   );
 }

@@ -34,7 +34,7 @@ export function TrafficSourceBars({ data }: { data: TrafficSourceBreakdown[] }) 
               />
               <span className="text-app-text">{TRAFFIC_SOURCE_LABELS[entry.source]}</span>
             </span>
-            <span className="text-app-muted">
+            <span className="text-app-muted tabular-nums">
               {entry.sessions} · {Math.round(entry.pct * 100)}%
             </span>
           </li>

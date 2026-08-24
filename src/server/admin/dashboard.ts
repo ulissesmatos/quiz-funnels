@@ -1,11 +1,10 @@
 import "server-only";
 
-import { count, desc, eq } from "drizzle-orm";
+import { count, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/server/db";
-import { adminAuditLogs, errorLogs, organization, organizationSubscriptions, user } from "@/server/db/schema";
+import { adminAuditLogs, errorLogs, organization, organizationSubscriptions, plans, user } from "@/server/db/schema";
 import { since } from "@/server/analytics/queries";
-import { PLAN } from "@/server/billing/plan";
 
 export type SubscriptionCounts = Record<"trialing" | "active" | "past_due" | "canceled", number>;
 
@@ -30,6 +29,7 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetrics>
   const [
     totalOrganizations,
     statusRows,
+    mrrRow,
     signupsLast7d,
     signupsLast30d,
     errorsLast24h,
@@ -42,6 +42,16 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetrics>
       .select({ status: organizationSubscriptions.status, total: count() })
       .from(organizationSubscriptions)
       .groupBy(organizationSubscriptions.status),
+    // MRR de verdade, não "assinantes ativos × preço único" — cada
+    // organização pode estar num plano diferente. Ciclo anual entra pelo
+    // preço MENSAL do plano (a base de cálculo), não pelo valor cobrado de
+    // uma vez: é a taxa de recorrência mensal-equivalente, o que "MRR"
+    // significa — desconto do Pix anual não é refletido aqui de propósito.
+    db
+      .select({ total: sql<number>`coalesce(sum(${plans.monthlyPriceCents}), 0)` })
+      .from(organizationSubscriptions)
+      .innerJoin(plans, eq(plans.id, organizationSubscriptions.planId))
+      .where(eq(organizationSubscriptions.status, "active")),
     db.select({ total: count() }).from(organization).where(since(organization.createdAt, 7)),
     db.select({ total: count() }).from(organization).where(since(organization.createdAt, 30)),
     db.select({ total: count() }).from(errorLogs).where(since(errorLogs.createdAt, 1)),
@@ -77,7 +87,7 @@ export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetrics>
   return {
     totalOrganizations: totalOrganizations[0]?.total ?? 0,
     subscriptionCounts,
-    mrrCents: subscriptionCounts.active * PLAN.priceCents,
+    mrrCents: mrrRow[0]?.total ?? 0,
     signupsLast7d: signupsLast7d[0]?.total ?? 0,
     signupsLast30d: signupsLast30d[0]?.total ?? 0,
     errorsLast24h: errorsLast24h[0]?.total ?? 0,

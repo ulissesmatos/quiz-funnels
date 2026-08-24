@@ -7,7 +7,7 @@
  *
  * Rodar com: pnpm db:seed
  */
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { nanoid } from "nanoid";
 import postgres from "postgres";
@@ -110,6 +110,83 @@ async function main() {
       console.log("✓ organização demo criada");
     } else {
       console.log("· organização demo já existia");
+    }
+
+    // Planos iniciais — números de partida, editáveis em /admin/planos a
+    // partir do primeiro minuto. "Starter" mantém o preço que a plataforma já
+    // cobrava antes de existir mais de um plano, pra ninguém ser surpreendido.
+    const PLANOS_SEED = [
+      {
+        slug: "starter",
+        name: "Starter",
+        description: "Para quem está começando a testar funis de quiz.",
+        monthlyPriceCents: 9700,
+        trialDays: 7,
+        maxFunnels: 5,
+        maxLeadsPerFunnel: 500,
+        canUseTeam: false,
+        canUseWebhooks: false,
+        featured: false,
+        sortOrder: 0,
+      },
+      {
+        slug: "pro",
+        name: "Pro",
+        description: "Para quem já vive de funil e precisa de equipe e automações.",
+        monthlyPriceCents: 19700,
+        trialDays: 7,
+        maxFunnels: 20,
+        maxLeadsPerFunnel: 5000,
+        canUseTeam: true,
+        canUseWebhooks: true,
+        featured: true,
+        sortOrder: 1,
+      },
+      {
+        slug: "business",
+        name: "Business",
+        description: "Sem limite de funil nem de lead, para operações grandes.",
+        monthlyPriceCents: 39700,
+        trialDays: 14,
+        maxFunnels: null,
+        maxLeadsPerFunnel: null,
+        canUseTeam: true,
+        canUseWebhooks: true,
+        featured: false,
+        sortOrder: 2,
+      },
+    ] as const;
+
+    let starterId: string | null = null;
+
+    for (const planoSeed of PLANOS_SEED) {
+      const [existente] = await db
+        .select({ id: schema.plans.id })
+        .from(schema.plans)
+        .where(eq(schema.plans.slug, planoSeed.slug))
+        .limit(1);
+
+      const id =
+        existente?.id ??
+        (await db.insert(schema.plans).values(planoSeed).returning({ id: schema.plans.id }))[0].id;
+
+      if (!existente) console.log(`✓ plano "${planoSeed.name}" criado`);
+      if (planoSeed.slug === "starter") starterId = id;
+    }
+
+    // Backfill: qualquer assinatura ainda sem plano (todas, hoje — a coluna é
+    // nova) recebe o Starter, que é o único preço que já existia antes desta
+    // feature.
+    if (starterId) {
+      const atualizadas = await db
+        .update(schema.organizationSubscriptions)
+        .set({ planId: starterId, updatedAt: now })
+        .where(isNull(schema.organizationSubscriptions.planId))
+        .returning({ id: schema.organizationSubscriptions.id });
+
+      if (atualizadas.length > 0) {
+        console.log(`✓ ${atualizadas.length} assinatura(s) associada(s) ao plano Starter`);
+      }
     }
 
     for (const document of validados) {

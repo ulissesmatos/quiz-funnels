@@ -37,12 +37,12 @@ export function AiExplainButton({
   return (
     <div className="flex flex-col items-start gap-2">
       <Button variant="outline" size="sm" onClick={explicar} disabled={pending}>
-        {pending ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+        {pending ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} className="text-app-accent" />}
         Explicar com IA
       </Button>
 
       {result?.text && (
-        <div className="w-full rounded-lg border border-app-border bg-app-surface-2 p-3">
+        <div className="w-full rounded-lg border border-app-border border-l-2 border-l-app-accent bg-app-surface-2 p-3">
           <ChatMarkdown text={result.text} />
         </div>
       )}

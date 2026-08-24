@@ -38,10 +38,10 @@ export function PageHeader({
   action?: ReactNode;
 }) {
   return (
-    <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="mt-1 text-sm text-app-muted">{description}</p>}
+        <h1 className="text-3xl font-bold tracking-[-0.03em] text-app-text">{title}</h1>
+        {description && <p className="mt-1.5 text-sm leading-relaxed text-app-muted">{description}</p>}
       </div>
       {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
     </header>

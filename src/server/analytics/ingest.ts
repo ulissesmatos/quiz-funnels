@@ -1,9 +1,10 @@
 import "server-only";
 
-import { sql } from "drizzle-orm";
+import { count, eq, sql } from "drizzle-orm";
 
+import { getPlanLimits } from "@/server/billing/plans";
 import { db } from "@/server/db";
-import { funnelEvents, responseSessions } from "@/server/db/schema";
+import { funnelEvents, funnels, responseSessions } from "@/server/db/schema";
 import { dispatchWebhooks } from "@/server/webhooks/dispatch";
 
 import type { TrackEventBody } from "./schema";
@@ -19,7 +20,7 @@ export type TrackRequestMeta = { userAgent?: string; country?: string };
  */
 export async function recordTrackEvent(body: TrackEventBody, meta: TrackRequestMeta): Promise<void> {
   try {
-    await upsertSession(body, meta);
+    const sessaoNova = await upsertSession(body, meta);
 
     await db.insert(funnelEvents).values({
       funnelId: body.funnelId,
@@ -28,6 +29,13 @@ export async function recordTrackEvent(body: TrackEventBody, meta: TrackRequestM
       stepId: body.stepId ?? null,
       payload: buildEventPayload(body),
     });
+
+    // Só numa sessão nova (não a cada evento subsequente da mesma pessoa
+    // avançando no funil) — isolado em try/catch próprio, sem nunca poder
+    // derrubar a gravação do evento em si por causa de um erro aqui.
+    if (sessaoNova) {
+      await verificarLimiteDeLeads(body.funnelId).catch(() => {});
+    }
 
     // Não aguardado de propósito: webhook lento/fora do ar não pode atrasar a
     // resposta deste endpoint. Erros dentro de `dispatchWebhooks` já são
@@ -39,7 +47,40 @@ export async function recordTrackEvent(body: TrackEventBody, meta: TrackRequestM
   }
 }
 
-async function upsertSession(body: TrackEventBody, meta: TrackRequestMeta): Promise<void> {
+/**
+ * Auto-despublica um funil que acabou de bater o limite de leads do plano —
+ * sem infraestrutura de cron neste app, este é o único ponto onde dá pra
+ * perceber que o limite estourou (na criação da sessão que o fez ultrapassar).
+ * Some do ar até alguém publicar de novo, o que só é possível depois de
+ * upgrade (`publishFunnelAction` recusa enquanto o limite continuar batido).
+ */
+async function verificarLimiteDeLeads(funnelId: string): Promise<void> {
+  const [funil] = await db
+    .select({ organizationId: funnels.organizationId, status: funnels.status })
+    .from(funnels)
+    .where(eq(funnels.id, funnelId))
+    .limit(1);
+
+  if (!funil || funil.status !== "published") return;
+
+  const limits = await getPlanLimits(funil.organizationId);
+  if (!limits || limits.maxLeadsPerFunnel === null) return;
+
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(responseSessions)
+    .where(eq(responseSessions.funnelId, funnelId));
+
+  if (total < limits.maxLeadsPerFunnel) return;
+
+  await db
+    .update(funnels)
+    .set({ status: "draft", autoUnpublishedAt: new Date(), updatedAt: new Date() })
+    .where(eq(funnels.id, funnelId));
+}
+
+/** `true` quando o upsert acabou de INSERIR (visitante novo), não atualizar uma sessão existente — truque `xmax = 0`, único jeito confiável de saber isso vindo de um `ON CONFLICT DO UPDATE` só. */
+async function upsertSession(body: TrackEventBody, meta: TrackRequestMeta): Promise<boolean> {
   const patch: Record<string, unknown> = { updatedAt: new Date() };
 
   switch (body.type) {
@@ -70,7 +111,7 @@ async function upsertSession(body: TrackEventBody, meta: TrackRequestMeta): Prom
       break;
   }
 
-  await db
+  const [row] = await db
     .insert(responseSessions)
     .values({
       id: body.sessionId,
@@ -86,7 +127,10 @@ async function upsertSession(body: TrackEventBody, meta: TrackRequestMeta): Prom
       outcomeId: body.type === "complete" ? (body.complete?.outcomeId ?? null) : null,
       completedAt: body.type === "complete" ? new Date() : null,
     })
-    .onConflictDoUpdate({ target: responseSessions.id, set: patch });
+    .onConflictDoUpdate({ target: responseSessions.id, set: patch })
+    .returning({ inserida: sql<boolean>`(xmax = 0)` });
+
+  return row?.inserida ?? false;
 }
 
 function buildEventPayload(body: TrackEventBody): Record<string, unknown> {

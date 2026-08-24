@@ -1,5 +1,6 @@
 "use client";
 
+import { Card } from "@/components/ui/card";
 import type { QuestionBreakdown } from "@/server/analytics/queries";
 
 import { AiExplainButton } from "./ai-explain-button";
@@ -30,9 +31,9 @@ export function AnswersTab({
       )}
 
       {questionsWithData.map((question) => (
-        <div key={question.blockName} className="rounded-2xl border border-app-border bg-app-surface p-4">
+        <Card key={question.blockName} padding="sm">
           <h2 className="text-sm font-medium text-app-text">{question.stepName}</h2>
-          <p className="mb-3 text-xs text-app-muted">{question.totalResponses} respostas</p>
+          <p className="mb-3 text-xs text-app-muted tabular-nums">{question.totalResponses} respostas</p>
 
           {question.kind === "choice" ? (
             <AnswerBarChart options={question.options} />
@@ -46,7 +47,7 @@ export function AnswersTab({
               ))}
             </ul>
           )}
-        </div>
+        </Card>
       ))}
 
       {hasEnoughData && questionsWithData.length > 0 && (

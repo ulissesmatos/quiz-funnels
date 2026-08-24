@@ -1,18 +1,26 @@
 "use client";
 
-import { ChevronsUpDown, LogOut, Settings2 } from "lucide-react";
+import { ChevronsUpDown, LogOut, Settings2, UserCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar } from "@/components/ui/misc";
 import { cn } from "@/lib/cn";
 import { authClient } from "@/lib/auth-client";
 
 /**
- * Rodapé de conta: avatar + nome + org, com um menu (`<details>`, mesmo
- * padrão nativo do FAQ da landing — sem dependência nova) pra configurações e
- * sair. Recolhido, mostra só o avatar; o menu abre pra cima porque é o rodapé
- * do sidebar, não tem espaço abaixo.
+ * Rodapé de conta: avatar + nome + org, com um menu de verdade (Radix
+ * DropdownMenu — navegação por teclado, `role="menu"`, fecha no Escape) pra
+ * configurações e sair. Abre pra cima porque é o rodapé do sidebar, sem
+ * espaço abaixo. Recolhido, mostra só o avatar.
  */
 export function AccountMenu({
   userName,
@@ -39,10 +47,10 @@ export function AccountMenu({
   }
 
   return (
-    <details className="group relative">
-      <summary
+    <DropdownMenu>
+      <DropdownMenuTrigger
         className={cn(
-          "flex cursor-pointer list-none items-center gap-2 rounded-lg p-2 hover:bg-app-surface-2",
+          "flex w-full items-center gap-2 rounded-lg p-2 text-left transition-colors duration-150 ease-app hover:bg-app-surface-2",
           collapsed && "md:justify-center md:px-0",
         )}
       >
@@ -52,10 +60,10 @@ export function AccountMenu({
           <span className="block truncate text-xs text-app-muted">{organizationName}</span>
         </span>
         <ChevronsUpDown size={14} className={cn("shrink-0 text-app-muted", collapsed && "md:hidden")} />
-      </summary>
+      </DropdownMenuTrigger>
 
-      <div className="absolute bottom-full left-0 z-50 mb-1 w-64 rounded-xl border border-app-border bg-app-surface-2 p-1.5 shadow-xl">
-        <div className="flex items-center gap-2 px-2 py-2">
+      <DropdownMenuContent side="top" align="start" className="w-64">
+        <div className="flex items-center gap-2 px-2.5 py-2">
           <Avatar name={userName} image={userImage} />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">{userName}</p>
@@ -63,40 +71,29 @@ export function AccountMenu({
           </div>
         </div>
 
-        <div className="my-1 border-t border-app-border" />
+        <DropdownMenuSeparator />
 
-        <Link
-          href="/configuracoes"
-          className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-app-text hover:bg-app-surface"
-        >
-          <Settings2 size={16} />
-          Configurações
-        </Link>
+        <DropdownMenuItem asChild>
+          <Link href="/perfil">
+            <UserCircle size={16} />
+            Perfil
+          </Link>
+        </DropdownMenuItem>
 
-        <button
-          type="button"
-          disabled={pending}
-          onClick={sair}
-          className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm text-app-danger hover:bg-app-surface disabled:opacity-50"
-        >
+        <DropdownMenuItem asChild>
+          <Link href="/configuracoes">
+            <Settings2 size={16} />
+            Configurações
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem danger disabled={pending} onSelect={() => void sair()}>
           <LogOut size={16} />
           Sair
-        </button>
-      </div>
-    </details>
-  );
-}
-
-function Avatar({ name, image }: { name: string; image: string | null }) {
-  if (image) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={image} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />;
-  }
-
-  const inicial = name.trim().charAt(0).toUpperCase() || "?";
-  return (
-    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-app-primary text-sm font-semibold text-white">
-      {inicial}
-    </span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

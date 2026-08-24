@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { useState, useTransition } from "react";
 
+import { Alert } from "@/components/ui/alert";
 import { badgeStyles } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,9 +17,12 @@ import type { WebhookSubscriptionListItem } from "@/server/webhooks/queries";
 export function WebhooksManager({
   webhooks: webhooksIniciais,
   funnels,
+  canUseWebhooks,
 }: {
   webhooks: WebhookSubscriptionListItem[];
   funnels: { id: string; name: string }[];
+  /** Feature do plano da organização. */
+  canUseWebhooks: boolean;
 }) {
   const [webhooks, setWebhooks] = useState(webhooksIniciais);
 
@@ -30,7 +34,11 @@ export function WebhooksManager({
         pra automatizar sem precisar de conector nativo.
       </p>
 
-      <NovoWebhookForm funnels={funnels} onCriado={(webhook) => setWebhooks((atual) => [webhook, ...atual])} />
+      {canUseWebhooks ? (
+        <NovoWebhookForm funnels={funnels} onCriado={(webhook) => setWebhooks((atual) => [webhook, ...atual])} />
+      ) : (
+        <Alert tone="warning">Seu plano atual não inclui webhooks — faça upgrade em Configurações para usar.</Alert>
+      )}
 
       {webhooks.length > 0 && (
         <ul className="flex flex-col gap-2">
